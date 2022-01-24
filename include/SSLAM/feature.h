@@ -1,20 +1,25 @@
 #ifndef FEATURE_H
 #define FEATURE_H
 
-#include "common_include.h"
-#include "map_point.h"
+#include <opencv2/opencv.hpp>
 
-namespace sslam
-{
-    class Feature
-    {
+#include "common_include.h"
+#include "frame.h"
+
+
+namespace sslam {
+
+    class Frame;
+
+    class Feature {
     private:
-        unsigned int u_, v_;
-        std::weak_ptr<Frame> frame_;
-        
-        
+        cv::KeyPoint key_point_;
+        std::weak_ptr<sslam::Frame> frame_;
+        bool is_on_left_image_;
+
     public:
-        Feature(Frame &frame);
+        Feature(std::shared_ptr<Frame> frame, cv::KeyPoint &kp);
+
         ~Feature();
     };
 

@@ -6,33 +6,32 @@
 #include "common_include.h"
 #include "frame.h"
 
-namespace sslam{
-    class FrontEnd
-    {
-    private:
-        std::vector<Frame> frames_;
+namespace sslam {
+    class FrontEnd {
     public:
+        std::vector <Frame> frames_;
 
-        cv::Ptr<cv::GFTTDetector> gftt_;
+        cv::Ptr <cv::GFTTDetector> gftt_;
 
         FrontEnd(/* args */);
+
         ~FrontEnd();
 
         /*
          * Initilize system.
          */
-        bool Initilize();
+        bool Initialize();
 
         bool AddFrame(Frame &frame);
 
         bool DetectFeatures(Frame &frame);
 
-        bool FindFeaturesInRight(Frame &frame);
+        int FindFeaturesInRight(Frame &frame);
 
 
     };
-    
-    
+
+
 }
 
 #endif
