@@ -1,1 +1,4 @@
-dataset_dir: /home/yeren/dataset/sequences/
+%YAML:1.0
+
+dataset_dir: /home/yeren/dataset/sequences/05
+source_type: 1

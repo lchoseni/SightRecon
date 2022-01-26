@@ -3,7 +3,9 @@
 
 #include<opencv2/opencv.hpp>
 
+#include "common_include.h"
 #include "feature.h"
+
 
 namespace sslam {
 
@@ -15,6 +17,7 @@ namespace sslam {
         static unsigned int global_index;
         // id of current frame
         unsigned int id_;
+        Sophus::SE3d pose_;
         std::vector<Feature> features_;
 
     public:
@@ -31,6 +34,8 @@ namespace sslam {
         static unsigned int GetNextIndex();
 
         bool SetLeftKP(std::vector<cv::KeyPoint> &kps);
+
+        void DrawKeyPoints();
     };
 
 }

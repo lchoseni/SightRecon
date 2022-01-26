@@ -9,9 +9,9 @@
 namespace sslam {
     class FrontEnd {
     public:
-        std::vector <Frame> frames_;
+        std::vector<Frame> frames_;
 
-        cv::Ptr <cv::GFTTDetector> gftt_;
+        cv::Ptr<cv::GFTTDetector> gftt_;
 
         FrontEnd(/* args */);
 
@@ -28,7 +28,9 @@ namespace sslam {
 
         int FindFeaturesInRight(Frame &frame);
 
+        bool InitMap();
 
+        bool Triangulation(Sophus::SE3d &T, Vec3 pos_1, Vec3 pos_2);
     };
 
 

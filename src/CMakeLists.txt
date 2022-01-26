@@ -1,4 +1,4 @@
 add_library(sslam SHARED
-        config.cpp dataset.cpp feature.cpp frame.cpp front_end.cpp)
+        config.cpp dataset.cpp feature.cpp frame.cpp front_end.cpp camera.cpp map.cpp)
 
-target_link_libraries(sslam)
+target_link_libraries(sslam ${THIRD_PARTY_LIBS})

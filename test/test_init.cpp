@@ -6,13 +6,19 @@
 #include "SSLAM/front_end.h"
 #include "SSLAM/config.h"
 #include "SSLAM/dataset.h"
+#include "SSLAM/frame.h"
 
 
 
 int main(){
+    sslam::Config::SetConfigFile(sslam::Config::config_file_);
     sslam::FrontEnd front_end;
 
-    sslam::Config::SetConfigFile(sslam::Config::config_file_);
     sslam::Dataset dataset;
-    dataset.GetNextFrame();
+    sslam::Frame frame = dataset.GetNextFrame();
+    front_end.DetectFeatures(frame);
+    std::cout << "Key points of left img is " << front_end.FindFeaturesInRight(frame);
+
+
+    frame.DrawKeyPoints();
 }

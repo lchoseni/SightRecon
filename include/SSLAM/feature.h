@@ -13,12 +13,16 @@ namespace sslam {
 
     class Feature {
     private:
-        cv::KeyPoint key_point_;
-        std::weak_ptr<sslam::Frame> frame_;
-        bool is_on_left_image_;
+        Frame *frame_;
 
     public:
-        Feature(std::shared_ptr<Frame> frame, cv::KeyPoint &kp);
+        cv::KeyPoint key_point_;
+
+        bool is_on_left_image_;
+
+        Feature();
+
+        Feature(Frame frame, cv::KeyPoint &kp);
 
         ~Feature();
     };
