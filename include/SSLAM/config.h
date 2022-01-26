@@ -7,7 +7,7 @@ namespace sslam {
 
     class Config {
     private:
-        static std::shared_ptr<Config> config_;
+        static Config *config_;
         cv::FileStorage file_;
 
         Config() {} // private constructor makes a singleton
@@ -16,6 +16,7 @@ namespace sslam {
         const static int single;
         const static int stereo;
         const static std::string config_file_;
+        const static std::string dataset_dir;
 
 
         ~Config(); // close the file when deconstructing
