@@ -50,7 +50,7 @@ int main(){
 
         float depth2 = p2_trans.at<double>(2, 0);
 
-        std::cout << "Depth2 is " << depth2 << std::endl;
+//        std::cout << "Depth2 is " << depth2 << std::endl;
         cv::circle(img2, match[1].get()->key_point_.pt, 2, get_color(depth2), 2);
 
     }
