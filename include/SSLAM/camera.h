@@ -13,7 +13,7 @@ namespace sslam {
         double fx_, fy_, cx_, cy_;
         Sophus::SE3d pose_;
 
-        Camera(double fx, double fy, double cx, double cy);
+        Camera(double fx, double fy, double cx, double cy, Sophus::SE3d pose);
         ~Camera();
 
         Eigen::Matrix<double, 3, 3> K() const {
@@ -23,6 +23,8 @@ namespace sslam {
         }
 
         Vec3 World2Camera(const Vec3 &world, const Sophus::SE3d &T_w_c);
+
+        Vec2 Camera3d2Camera2d(const Vec3 &camera);
 
         Vec2 Camera2Pixel(const Vec3 &camera);
 

@@ -3,6 +3,7 @@
 
 #include<vector>
 #include<memory>
+#include <map>
 
 // Sophus
 #include<sophus/se3.hpp>

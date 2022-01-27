@@ -5,6 +5,7 @@
 
 #include "common_include.h"
 #include "frame.h"
+#include "camera.h"
 
 namespace sslam {
     class FrontEnd {
@@ -12,6 +13,8 @@ namespace sslam {
         std::vector<Frame> frames_;
 
         cv::Ptr<cv::GFTTDetector> gftt_;
+
+        std::shared_ptr<sslam::Camera> left_camera_, right_camera_;
 
         FrontEnd(/* args */);
 
@@ -30,7 +33,8 @@ namespace sslam {
 
         bool InitMap();
 
-        bool Triangulation(Sophus::SE3d &T, Vec3 pos_1, Vec3 pos_2);
+        bool Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, std::vector<Feature::Ptr> &pt2,
+                           std::vector<cv::Point3d> &points);
     };
 
 

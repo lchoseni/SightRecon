@@ -16,6 +16,8 @@ namespace sslam {
         Frame *frame_;
 
     public:
+        typedef std::shared_ptr<Feature> Ptr ;
+
         cv::KeyPoint key_point_;
 
         bool is_on_left_image_;

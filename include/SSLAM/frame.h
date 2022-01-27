@@ -12,6 +12,7 @@ namespace sslam {
     class Feature;
 
     class Frame {
+
     private:
         // index for all frames, it indicates next frame id.
         static unsigned int global_index;
@@ -24,8 +25,10 @@ namespace sslam {
         cv::Mat img_, left_img_, right_img_;
         std::vector<cv::KeyPoint> left_key_points_;
         std::vector<cv::KeyPoint> right_key_points_;
-        std::vector<Feature> left_features_;
-        std::vector<Feature> right_features_;
+        std::vector<std::shared_ptr<Feature>> left_features_;
+        std::vector<std::shared_ptr<Feature>> right_features_;
+        // Key point matches between left img and right img.
+        std::vector<std::vector<std::shared_ptr<Feature>>> matches;
 
         Frame();
 
