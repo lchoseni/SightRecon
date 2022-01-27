@@ -8,12 +8,23 @@
 
 namespace sslam {
 
-    Camera::Camera(double fx, double fy, double cx, double cy) : fx_(fx), fy_(fy), cx_(cx), cy_(cy) {
+    Camera::Camera(double fx, double fy, double cx, double cy, Sophus::SE3d pose)
+        : fx_(fx), fy_(fy), cx_(cx), cy_(cy), pose_(pose) {
+
+    }
+
+    Camera::~Camera(){
 
     }
 
     Vec3 Camera::World2Camera(const Vec3 &world, const Sophus::SE3d &T_w_c) {
         return pose_ * T_w_c * world;
+    }
+
+    Vec2 Camera::Camera3d2Camera2d(const Vec3 &camera){
+        return Vec2(
+                    camera(0, 0) / camera(2, 0),
+                    camera(1, 0) / camera(2, 0));
     }
 
     Vec2 Camera::Camera2Pixel(const Vec3 &camera) {
@@ -31,7 +42,7 @@ namespace sslam {
                 (pixel(0, 0) - cx_) * depth / fx_,
                 (pixel(0, 1)) - cy_ * depth / fy_,
                 depth
-        )
+        );
     }
 
     Vec3 Camera::Camera2World(const Vec3 &camera, const Sophus::SE3d &T_c_w) {
