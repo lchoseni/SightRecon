@@ -38,7 +38,6 @@ int main(){
         if (frame.right_features_.at(i) == nullptr) continue;
         std::vector<std::shared_ptr<sslam::Feature>> match = frame.matches.at(i);
         float depth1 = pts[i].z;
-//        std::cout << "Depth1 is " << depth1 << std::endl;
         cv::circle(img1, match[0].get()->key_point_.pt, 2, get_color(depth1), 2);
 
         cv::Mat p2_trans = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)
@@ -49,13 +48,11 @@ int main(){
                    , front_end.right_camera_.get()->pose_.translation()(2, 0));
 
         float depth2 = p2_trans.at<double>(2, 0);
-
-//        std::cout << "Depth2 is " << depth2 << std::endl;
         cv::circle(img2, match[1].get()->key_point_.pt, 2, get_color(depth2), 2);
 
     }
-     cv::imshow("img1", img1);
-     cv::imshow("img2", img2);
-     cv::waitKey();
+    cv::imshow("img1", img1);
+    cv::imshow("img2", img2);
+    cv::waitKey(); 
 //    frame.DrawKeyPoints();
 }
