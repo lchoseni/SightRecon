@@ -9,6 +9,7 @@ namespace sslam {
     Frame::~Frame() {
     }
 
+
     unsigned int Frame::GetNextIndex() {
         return ++global_index;
     }
@@ -28,6 +29,14 @@ namespace sslam {
         cv::imshow("img1", out_left);
         cv::imshow("img2", out_right);
         cv::waitKey(0);
+    }
+
+    void Frame::SetCamera(std::shared_ptr<Camera> &sharedPtr) {
+        this->cam = sharedPtr;
+    }
+
+    std::shared_ptr<Camera> Frame::GetCamera() {
+        return cam;
     }
 
 }

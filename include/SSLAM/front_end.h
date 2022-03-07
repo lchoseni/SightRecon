@@ -14,7 +14,7 @@ namespace sslam {
 
         cv::Ptr<cv::GFTTDetector> gftt_;
 
-        std::shared_ptr<sslam::Camera> left_camera_, right_camera_;
+        std::shared_ptr<Camera> left_camera_, right_camera_;
 
         FrontEnd(/* args */);
 
