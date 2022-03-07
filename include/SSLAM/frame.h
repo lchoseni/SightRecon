@@ -5,6 +5,7 @@
 
 #include "common_include.h"
 #include "feature.h"
+#include "camera.h"
 
 
 namespace sslam {
@@ -18,6 +19,7 @@ namespace sslam {
         static unsigned int global_index;
         // id of current frame
         unsigned int id_;
+        std::shared_ptr<sslam::Camera> cam;
         Sophus::SE3d pose_;
         std::vector<Feature> features_;
 
@@ -33,6 +35,10 @@ namespace sslam {
         Frame();
 
         ~Frame();
+
+        void SetCamera(std::shared_ptr<Camera> &sharedPtr);
+
+        std::shared_ptr<sslam::Camera> GetCamera();
 
         static unsigned int GetNextIndex();
 

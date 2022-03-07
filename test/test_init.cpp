@@ -30,7 +30,7 @@ int main(){
     std::cout << "Key points of right img is " << front_end.FindFeaturesInRight(frame)<< std::endl;;
 
     std::vector<cv::Point3d> pts;
-    front_end.Triangulation(front_end.right_camera_.get()->pose_, frame.left_features_, frame.right_features_, pts);
+    front_end.Triangulation(front_end.right_camera_->pose_, frame.left_features_, frame.right_features_, pts);
 
     cv::Mat img1 = frame.left_img_.clone();
     cv::Mat img2 = frame.right_img_.clone();
@@ -53,6 +53,6 @@ int main(){
     }
     cv::imshow("img1", img1);
     cv::imshow("img2", img2);
-    cv::waitKey(); 
-//    frame.DrawKeyPoints();
+    cv::waitKey();
+    frame.DrawKeyPoints();
 }

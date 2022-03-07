@@ -8,17 +8,9 @@
 namespace sslam {
     FrontEnd::FrontEnd() {
         gftt_ = cv::GFTTDetector::create(Config::Get<int>("num_features"), 0.01, 1);
-        std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> Ks;
-        std::vector<std::shared_ptr<Vec3>> ts;
-        sslam::Dataset::GetCameraPara(Ks, ts);
 
-        for (size_t i = 0; i < Ks.size(); ++i){
-            std::cout << *Ks[i].get() << *ts[i].get() << std::endl;
-        }
-            left_camera_ = std::shared_ptr<sslam::Camera>(
-                        new Camera((*Ks[0])(0, 0), (*Ks[0])(1, 1), (*Ks[0])(0, 2), (*Ks[0])(1, 2), Sophus::SE3d(Sophus::SO3d(), *ts[0])));
-            right_camera_ = std::shared_ptr<sslam::Camera>(
-                        new Camera((*Ks[1])(0, 0), (*Ks[1])(1, 1), (*Ks[1])(0, 2), (*Ks[1])(1, 2), Sophus::SE3d(Sophus::SO3d(), *ts[1])));
+        left_camera_ = Dataset::GetCamera(0);
+        right_camera_ = Dataset::GetCamera(1);
 
     }
 
@@ -122,7 +114,7 @@ namespace sslam {
 
         for (int i = 0; i < pts_4d.cols; i++) {
             cv::Mat x = pts_4d.col(i);
-            x /= x.at<float>(3, 0); // 归一化
+            x /= x.at<float>(3, 0); // normalization
             cv::Point3d p(
               x.at<float>(0, 0),
               x.at<float>(1, 0),

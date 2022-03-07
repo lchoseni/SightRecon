@@ -16,8 +16,8 @@ namespace sslam {
         Camera(double fx, double fy, double cx, double cy, Sophus::SE3d pose);
         ~Camera();
 
-        Eigen::Matrix<double, 3, 3> K() const {
-            Eigen::Matrix<double, 3, 3> k;
+        Mat33 K() const {
+            Mat33 k;
             k << fx_, 0, cx_, 0, fy_, cy_, 0, 0, 1;
             return k;
         }
