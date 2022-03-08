@@ -1,4 +1,7 @@
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 #include "SSLAM/front_end.h"
 #include "SSLAM/config.h"
@@ -41,7 +44,7 @@ namespace sslam {
         if (Config::Get<int>(Config::source_type) != Config::stereo) {
             return false;
         }
-
+        
         std::vector<cv::Point2f> left_kps, right_kps;
 //        std::cout << "feature size is " << frame.left_features_.size()<< std::endl;
         for (auto &kp: frame.left_features_) {
