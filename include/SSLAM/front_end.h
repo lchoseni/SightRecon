@@ -31,6 +31,7 @@ namespace sslam {
 
         int FindFeaturesInRight(Frame &frame);
 
+
         bool InitMap();
 
         bool Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, std::vector<Feature::Ptr> &pt2,
