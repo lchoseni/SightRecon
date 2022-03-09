@@ -4,6 +4,7 @@
 #include "SSLAM/common_include.h"
 #include "SSLAM/camera.h"
 #include "SSLAM/frame.h"
+#include "SSLAM/dataset.h"
 
 namespace sslam {
 
@@ -62,28 +63,23 @@ namespace sslam {
         cv::KeyPoint::convert(ky_pts1, pts1);
         cv::KeyPoint::convert(ky_pts2, pts2);
         std::cout << pts1.size() << " " << pts2.size() << std::endl;
-        const cv::Mat h = cv::findHomography(pts1, pts2);
-        std::cout << "Homography is " << h << std::endl;
-        // cv::Mat outimg;
-        // cv::warpPerspective(frame1.left_img_, outimg, h, outimg.size());
-        // cv::imshow("after h", outimg);
 
-        std::vector<cv::Mat> Rs, Ts, Ns;
         cv::Mat K1, K2;
-        cout << (frame1.GetCamera() == nullptr) << endl;
-        frame1.GetCamera()->K();
+
         cv::eigen2cv(frame1.GetCamera()->K(), K1);
         cv::eigen2cv(frame2.GetCamera()->K(), K2);
 
-        int solutions = cv::decomposeHomographyMat(h, K1, Rs, Ts, Ns);
-        cv::filterHomographyDecompByVisibleRefpoints
+        cv::Mat ess = cv::findEssentialMat(pts1, pts2, K1);
+        cout << "Essential matrix is " << ess << endl;
 
-        std::cout << "solutions is " << solutions << std::endl;
-        cout << "R is " << Rs[0] << ", and T is " << Ts[0] << ", and N is " << Ns[0] << endl;
-        // cv::waitKey(0);
+        cv::Mat R,t;
+        v::recoverPose(ess, pts1, pts2, R, t);
+        cout << "R is " << R << ", and T is " << t << endl;
+
     }
 
     void Graph::ComputeAllRAndT() {
-
+        Frame frame;
+        while ((frame = sslam::Dataset::GetNextFrame()) )
     }
 }
