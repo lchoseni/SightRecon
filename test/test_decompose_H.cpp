@@ -10,14 +10,14 @@ int main(){
     sslam::FrontEnd front_end;
 
     sslam::Dataset dataset;
-    sslam::Frame frame1;
+    auto frame1;
     front_end.DetectFeatures(frame1);
     front_end.FindFeaturesInRight(frame1);
-    sslam::Frame frame2;
-    for (int i = 0; i < 1; ++i) {
+    auto frame2;
+    for (int i = 0; i < 120; ++i) {
         frame1 = dataset.GetNextFrame();
     }
-    for (int i = 0; i < 1; ++i) {
+    for (int i = 0; i < 5; ++i) {
         frame2 = dataset.GetNextFrame();
     }
     front_end.DetectFeatures(frame2);

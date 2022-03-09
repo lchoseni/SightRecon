@@ -26,7 +26,7 @@ namespace sslam {
      * 
      * @return sslam::Frame 
      */
-    sslam::Frame Dataset::GetNextFrame() {
+    shared_ptr<Frame> Dataset::GetNextFrame() {
         boost::format data_fmt("%s/image_%d/%06d.png");
         cv::Mat left, right;
 
@@ -39,12 +39,12 @@ namespace sslam {
         cv::resize(left, resized_left, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
         cv::resize(right, resized_right, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
 
-        Frame new_frame;
-        new_frame.left_img_ = resized_left;
-        new_frame.right_img_ = resized_right;
-        new_frame.SetCamera(left_camera_);
+        Frame *new_frame = new Frame();
+        new_frame->left_img_ = resized_left;
+        new_frame->right_img_ = resized_right;
+        new_frame->SetCamera(left_camera_);
         cur_img_index++;
-        return new_frame;
+        return shared_ptr<Frame>(new_frame);
     }
 
     bool Dataset::GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> &Ks,

@@ -21,7 +21,7 @@ namespace sslam {
 
         ~Dataset();
 
-        sslam::Frame GetNextFrame();
+        shared_ptr<Frame> GetNextFrame();
 
         static bool GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> &Ks,
                                   std::vector<std::shared_ptr< Vec3>> &ts);
