@@ -24,19 +24,19 @@ int main(){
     sslam::FrontEnd front_end;
 
     sslam::Dataset dataset;
-    sslam::Frame frame = dataset.GetNextFrame();
+    shared_ptr<sslam::Frame> frame = dataset.GetNextFrame();
     front_end.DetectFeatures(frame);
-    std::cout << "Key points of left img is " << frame.left_key_points_.size() << std::endl;;
+    std::cout << "Key points of left img is " << frame->left_key_points_.size() << std::endl;;
     std::cout << "Key points of right img is " << front_end.FindFeaturesInRight(frame)<< std::endl;;
 
     std::vector<cv::Point3d> pts;
-    front_end.Triangulation(front_end.right_camera_->pose_, frame.left_features_, frame.right_features_, pts);
+    front_end.Triangulation(front_end.right_camera_->pose_, frame->left_features_, frame->right_features_, pts);
 
-    cv::Mat img1 = frame.left_img_.clone();
-    cv::Mat img2 = frame.right_img_.clone();
-    for (size_t i = 0; i < frame.matches.size(); ++i){
-        if (frame.right_features_.at(i) == nullptr) continue;
-        std::vector<std::shared_ptr<sslam::Feature>> match = frame.matches.at(i);
+    cv::Mat img1 = frame->left_img_.clone();
+    cv::Mat img2 = frame->right_img_.clone();
+    for (size_t i = 0; i < frame->matches.size(); ++i){
+        if (frame->right_features_.at(i) == nullptr) continue;
+        std::vector<std::shared_ptr<sslam::Feature>> match = frame->matches.at(i);
         float depth1 = pts[i].z;
         cv::circle(img1, match[0].get()->key_point_.pt, 2, get_color(depth1), 2);
 
@@ -54,5 +54,5 @@ int main(){
     cv::imshow("img1", img1);
     cv::imshow("img2", img2);
     cv::waitKey();
-    frame.DrawKeyPoints();
+    frame->DrawKeyPoints();
 }

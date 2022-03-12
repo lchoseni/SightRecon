@@ -27,9 +27,9 @@ namespace sslam {
 
         bool AddFrame(Frame &frame);
 
-        bool DetectFeatures(Frame &frame);
+        bool DetectFeatures(shared_ptr<Frame> frame);
 
-        int FindFeaturesInRight(Frame &frame);
+        int FindFeaturesInRight(shared_ptr<Frame> frame);
 
 
         bool InitMap();

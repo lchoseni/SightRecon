@@ -13,7 +13,7 @@ namespace sslam {
     class Feature;
 
     class Frame {
-    private:
+    public:
         // index for all frames, it indicates next frame id.
         static unsigned int global_index;
         // id of current frame
@@ -22,7 +22,6 @@ namespace sslam {
         Sophus::SE3d pose_;
         std::vector<Feature> features_;
 
-    public:
 
         cv::Mat img_, left_img_, right_img_;
         std::vector<cv::KeyPoint> left_key_points_;

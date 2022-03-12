@@ -12,8 +12,15 @@ namespace sslam {
     FrontEnd::FrontEnd() {
         gftt_ = cv::GFTTDetector::create(Config::Get<int>("num_features"), 0.01, 1);
 
-        left_camera_ = Dataset::GetCamera(0);
-        right_camera_ = Dataset::GetCamera(1);
+        if (Config::Get<int>("source_type") == 1)
+        {
+            left_camera_ = Dataset::GetCamera(0);
+            right_camera_ = Dataset::GetCamera(1);
+        } else{
+            left_camera_ = Dataset::GetCamera(0);
+
+        }
+        
 
     }
 
@@ -21,25 +28,31 @@ namespace sslam {
 
     }
 
-    bool FrontEnd::DetectFeatures(Frame &frame) {
+    bool FrontEnd::DetectFeatures(shared_ptr<Frame> frame) {
+        if (frame == nullptr){
+            return false;
+        }
+        if (frame->left_key_points_.size() > 0){
+            return true;
+        }
 
         std::vector<cv::KeyPoint> key_points;
         switch (sslam::Config::Get<int>(sslam::Config::source_type)) {
             case 1:
-                gftt_->detect(frame.left_img_, key_points);
+                gftt_->detect(frame->left_img_, key_points);
                 if (key_points.size() == 0) {
                     return false;
                 }
-                frame.SetLeftKP(key_points);
+                frame->SetLeftKP(key_points);
                 for (size_t i = 0; i < key_points.size(); i++) {
-                    frame.left_features_.push_back(Feature::Ptr(new Feature(frame, key_points[i])));
+                    frame->left_features_.push_back(Feature::Ptr(new Feature(frame, key_points[i])));
                 }
         }
         return true;
     }
 
 
-    int FrontEnd::FindFeaturesInRight(Frame &frame) {
+    int FrontEnd::FindFeaturesInRight(shared_ptr<Frame> frame) {
 
         if (Config::Get<int>(Config::source_type) != Config::stereo) {
             return false;
@@ -47,7 +60,7 @@ namespace sslam {
         
         std::vector<cv::Point2f> left_kps, right_kps;
 //        std::cout << "feature size is " << frame.left_features_.size()<< std::endl;
-        for (auto &kp: frame.left_features_) {
+        for (auto &kp: frame->left_features_) {
             left_kps.push_back(kp->key_point_.pt);
             right_kps.push_back(kp->key_point_.pt);
         }
@@ -58,7 +71,7 @@ namespace sslam {
         std::vector<uchar> status;
         std::vector<float> err;
         cv::TermCriteria criteria = cv::TermCriteria((cv::TermCriteria::COUNT) + (cv::TermCriteria::EPS), 10, 0.03);
-        cv::calcOpticalFlowPyrLK(frame.left_img_, frame.right_img_, left_kps, right_kps, status, err,
+        cv::calcOpticalFlowPyrLK(frame->left_img_, frame->right_img_, left_kps, right_kps, status, err,
                                  cv::Size(11, 11), 3, criteria, cv::OPTFLOW_USE_INITIAL_FLOW);
 
         int num_good_points = 0;
@@ -67,12 +80,12 @@ namespace sslam {
                 cv::KeyPoint kp(right_kps[i], 7);
                 Feature::Ptr feat(new Feature(frame, kp));
                 feat->is_on_left_image_ = false;
-                frame.right_features_.push_back(feat);
-                frame.right_key_points_.push_back(kp);
-                frame.matches.push_back(std::vector<std::shared_ptr<Feature>>{frame.left_features_[i], feat});
+                frame->right_features_.push_back(feat);
+                frame->right_key_points_.push_back(kp);
+                frame->matches.push_back(std::vector<std::shared_ptr<Feature>>{frame->left_features_[i], feat});
                 num_good_points++;
             } else {
-                frame.right_features_.push_back(nullptr);
+                frame->right_features_.push_back(nullptr);
             }
         }
 

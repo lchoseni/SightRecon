@@ -2,6 +2,8 @@
 // Created by yeren on 1/24/22.
 //
 #include <boost/format.hpp>
+#include <iostream>
+#include "unistd.h"
 
 #include "SSLAM/dataset.h"
 #include "SSLAM/config.h"
@@ -29,6 +31,15 @@ namespace sslam {
     shared_ptr<Frame> Dataset::GetNextFrame() {
         boost::format data_fmt("%s/image_%d/%06d.png");
         cv::Mat left, right;
+
+
+        if ( access( (data_fmt % dataset_dir % 0 % cur_img_index).str().c_str(), F_OK ) == -1 ) {
+            return nullptr;
+        }
+
+        if (cur_img_index > 10){
+            return nullptr;
+        }
 
         left = cv::imread((data_fmt % dataset_dir % 0 % cur_img_index).str(), cv::IMREAD_GRAYSCALE);
         right = cv::imread((data_fmt % dataset_dir % 1 % cur_img_index).str(), cv::IMREAD_GRAYSCALE);
@@ -86,7 +97,9 @@ namespace sslam {
         if(left_camera_ == nullptr) {
             std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> Ks;
             std::vector<std::shared_ptr<Vec3>> ts;
-            sslam::Dataset::GetCameraPara(Ks, ts);
+            if (!sslam::Dataset::GetCameraPara(Ks, ts)){
+                return nullptr;
+            }
 
             left_camera_ = std::shared_ptr<Camera>(
                     new Camera((*Ks[0])(0, 0), (*Ks[0])(1, 1), (*Ks[0])(0, 2), (*Ks[0])(1, 2),
