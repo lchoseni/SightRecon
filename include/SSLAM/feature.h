@@ -13,7 +13,7 @@ namespace sslam {
 
     class Feature {
     private:
-        Frame *frame_;
+        shared_ptr<Frame> frame_;
 
     public:
         typedef std::shared_ptr<Feature> Ptr ;
@@ -24,7 +24,7 @@ namespace sslam {
 
         Feature();
 
-        Feature(Frame frame, cv::KeyPoint &kp);
+        Feature(shared_ptr<Frame> frame, cv::KeyPoint &kp);
 
         ~Feature();
     };
