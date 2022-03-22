@@ -52,4 +52,5 @@ namespace sslam {
     Vec3 Camera::Pixel2World(const Vec2 &pixel, const Sophus::SE3d &T_c_w, double depth) {
         return Camera2World(Pixel2Camera(pixel, depth), T_c_w);
     }
+
 }

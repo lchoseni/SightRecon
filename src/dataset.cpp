@@ -32,7 +32,6 @@ namespace sslam {
         boost::format data_fmt("%s/image_%d/%06d.png");
         cv::Mat left, right;
 
-
         if ( access( (data_fmt % dataset_dir % 0 % cur_img_index).str().c_str(), F_OK ) == -1 ) {
             return nullptr;
         }
