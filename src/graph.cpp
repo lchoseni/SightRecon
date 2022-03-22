@@ -210,7 +210,7 @@ void Graph::ComputeHomography(const cv::Mat &K_src,
 
 void Graph::ComputeAllNCC(int win_size) {
   shared_ptr<sslam::Frame> src = nullptr;
-  for (shared_ptr<Frame> src: frames){
+  for (shared_ptr<Frame> src: frames) {
     cout << "Compute all ncc at image" << src->id_ << endl;
     for (int row = 0; row < ref_height_; ++row) {
       for (int col = 0; col < ref_width_; ++col) {
@@ -225,7 +225,7 @@ void Graph::ComputeAllNCC(int win_size) {
           src_m.at<double>(row, col) = one_minus_ncc;
           id_to_NCC[ref_img_->id_].insert(make_pair(src->id_, src_m));
         } else {
-          if (id_to_NCC[ref_img_->id_].count(src->id_) <= 0){
+          if (id_to_NCC[ref_img_->id_].count(src->id_) <= 0) {
             cv::Mat src_m = cv::Mat(ref_height_, ref_width_, CV_64F);
             src_m.at<double>(row, col) = one_minus_ncc;
             id_to_NCC[ref_img_->id_].insert(make_pair(src->id_, src_m));
@@ -259,7 +259,7 @@ void Graph::Propagate() {
     // Then compute each q(Z_l^m)
 
     for (int col = 0; col < ref_width_; ++col) {
-      cout << "Calculate at " << row << ", " << col <<endl;
+      cout << "Calculate at " << row << ", " << col << endl;
       vector<double> all_frame_selection_prob;
       double later = 1;
       vector<double> BackMsg;
@@ -306,7 +306,8 @@ void Graph::Propagate() {
             sum_of_ncc_diff_depth[0] += id_to_NCC[ref_img_->id_][frame->id_].at<double>(row, col);
             if (col > 0) {
 
-              sum_of_ncc_diff_depth[0] += ComputeNCC(*ref_img_, *frame, row, col, win_size, depth.at<double>(row, col - 1));
+              sum_of_ncc_diff_depth[0] +=
+                  ComputeNCC(*ref_img_, *frame, row, col, win_size, depth.at<double>(row, col - 1));
 
             } else {
               sum_of_ncc_diff_depth[1] += id_to_NCC[ref_img_->id_][frame->id_].at<double>(row, col);
