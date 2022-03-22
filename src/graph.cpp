@@ -245,7 +245,7 @@ void Graph::Propagate() {
   std::random_device rd;
   std::mt19937 gen(rd());
   uniform_int_distribution<int> uni_dist(0, 100);
-  uniform_int_distribution<double> rand_dist(depth_min, depth_max);
+  uniform_real_distribution<double> rand_dist(depth_min, depth_max);
 
   // Compute Back and Forward message Firstly.
   // And the emission probability at specific pixel to get q(Z_l^m)
