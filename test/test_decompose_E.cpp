@@ -10,8 +10,7 @@ int main(){
     sslam::FrontEnd front_end;
 
     sslam::Dataset dataset;
-    sslam::Graph graph = sslam::Graph(&dataset);
+    sslam::Graph graph = sslam::Graph(&dataset, dataset.GetNextFrame());
     graph.ComputeAllRAndT();
-
 
 }
