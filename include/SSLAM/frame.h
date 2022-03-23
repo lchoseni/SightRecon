@@ -33,8 +33,6 @@ namespace sslam {
 
         Frame();
 
-        ~Frame();
-
         void SetCamera(std::shared_ptr<Camera> &sharedPtr);
 
         std::shared_ptr<sslam::Camera> GetCamera();

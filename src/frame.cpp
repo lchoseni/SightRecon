@@ -6,8 +6,9 @@ namespace sslam {
     Frame::Frame() : id_(GetNextIndex()) {
     }
 
-    Frame::~Frame() {
-    }
+//    Frame::~Frame() {
+//      cout<< "invoke" << endl;
+//    }
 
 
     unsigned int Frame::GetNextIndex() {
