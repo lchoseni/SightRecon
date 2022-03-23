@@ -12,5 +12,7 @@ int main(){
     sslam::Dataset dataset;
     sslam::Graph graph = sslam::Graph(&dataset, dataset.GetNextFrame());
     graph.ComputeAllRAndT();
+  cv::waitKey(0);
+
 
 }

@@ -21,5 +21,11 @@ int main(){
   int win_size = 5;
   int src_id = 0;
 //  hmm.ComputeBackwardMessage()
-  graph.Propagate();
+  graph.InitialRandomDepth();
+
+  for (int i = 0; i < 20; ++i) {
+    graph.Propagate();
+
+  }
+
 }

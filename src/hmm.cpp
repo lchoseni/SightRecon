@@ -13,8 +13,8 @@ double Hmm::ComputeForwardMessage(int row, int col, int width, double z1_emissio
     return 0.5 * z1_emission + 0.5 * z0_emission;
   } else {
     double zn0, zn1;
-    zn0 = ((1 - tran_0_1) * prev0 + tran_0_1 * (1 - prev0)) * z0_emission;
-    zn1 = (tran_0_1 * prev0 + (1 - tran_0_1) * (1 - prev0)) * z1_emission;
+    zn0 = (tran_0_1 * prev0 + (1 - tran_0_1) * (1 - prev0)) * z0_emission;
+    zn1 = (( 1 - tran_0_1) * prev0 + tran_0_1 * (1 - prev0)) * z1_emission;
     return zn1 / (zn0 + zn1);
   }
 
@@ -26,8 +26,8 @@ double Hmm::ComputeBackwardMessage(int row, int col, int width, double z1_emissi
     return 1.0;
   } else {
     double zn0, zn1;
-    zn0 = tran_0_1 * z0_emission * later0 + (1 - tran_0_1) * z1_emission * (1 - later0);
-    zn1 = (tran_0_1 * z0_emission * later0 + (1 - tran_0_1) * z1_emission) * (1 - later0);
+    zn0 = tran_0_1 * z1_emission * later0 + (1 - tran_0_1) * z0_emission * (1 - later0);
+    zn1 = (1 - tran_0_1) * z1_emission * later0 + tran_0_1 * z0_emission * (1 - later0);
     return zn1 / (zn0 + zn1);
   }
 }
