@@ -33,7 +33,7 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
   if (access((data_fmt % dataset_dir % cur_img_index).str().c_str(), F_OK) == -1) {
     return nullptr;
   }
-  if (cur_img_index > 2) {
+  if (cur_img_index > 10) {
     return nullptr;
   }
 
@@ -48,8 +48,8 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
   cv::resize(right, resized_right, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
 
   Frame *new_frame = new Frame();
-  new_frame->left_img_ = left;
-  new_frame->right_img_ = right;
+  new_frame->left_img_ = resized_left;
+  new_frame->right_img_ = resized_right;
   new_frame->SetCamera(left_camera_);
   cur_img_index++;
   return shared_ptr<Frame>(new_frame);
@@ -82,7 +82,7 @@ bool Dataset::GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3,
     std::shared_ptr<Vec3> t(new Vec3());
     *t << projection_data[3], projection_data[7], projection_data[11];
            *t = K->inverse() * *t;
-           *K = *K ;
+           *K = *K * 0.25;
     Ks.push_back(K);
     ts.push_back(t);
   }

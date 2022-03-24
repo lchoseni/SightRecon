@@ -12,6 +12,8 @@
 #include "SSLAM/dataset.h"
 #include "SSLAM/utils/utils.h"
 
+using namespace cv;
+
 namespace sslam {
 
 Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), ref_img_(ref_img) {
@@ -77,7 +79,7 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
 
   std::vector<cv::DMatch> good_matches;
   for (int i = 0; i < descriptors_1.rows; i++) {
-    if (matches[i].distance <= max(2 * min_dist, 5.0)) {
+    if (matches[i].distance <= max(2 * min_dist, 30.0)) {
       good_matches.push_back(matches[i]);
     }
   }
@@ -92,12 +94,9 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
   std::vector<cv::Point2f> pts1, pts2;
   std::vector<cv::KeyPoint> ky_pts1, ky_pts2;
   for (auto &match: good_matches) {
-    ky_pts1.push_back(frame1->left_key_points_[match.queryIdx]);
-    ky_pts2.push_back(frame2->left_key_points_[match.trainIdx]);
+    pts1.push_back(frame1->left_key_points_[match.queryIdx].pt);
+    pts2.push_back(frame2->left_key_points_[match.trainIdx].pt);
   }
-
-  cv::KeyPoint::convert(ky_pts1, pts1);
-  cv::KeyPoint::convert(ky_pts2, pts2);
 
   if (pts1.size() < 8 || pts2.size() < 8) {
     return false;
@@ -108,15 +107,15 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
   cv::eigen2cv(frame1->GetCamera()->K(), K1);
   cv::eigen2cv(frame2->GetCamera()->K(), K2);
   cv::Mat ess = cv::findEssentialMat(pts1, pts2, K1);
-  if (id_to_H.count(ref_img_->id_) <= 0){
+  if (id_to_H.count(ref_img_->id_) <= 0) {
     id_to_H.insert(make_pair(ref_img_->id_, map<unsigned int, cv::Mat>()));
   }
-  if (id_to_H[ref_img_->id_].count(frame2->id_) <= 0){
+  if (id_to_H[ref_img_->id_].count(frame2->id_) <= 0) {
     id_to_H[ref_img_->id_].insert(make_pair(frame2->id_, cv::Mat()));
   }
 
   id_to_H[ref_img_->id_][frame2->id_] = cv::findHomography(pts1, pts2);
-  cout << "H is " << id_to_H[ref_img_->id_][frame2->id_] << endl;
+//  cout << "H is " << id_to_H[ref_img_->id_][frame2->id_] << endl;
   cv::Mat R, t;
   if (cv::recoverPose(ess, pts1, pts2, R, t) <= 0) {
     return false;
@@ -130,6 +129,7 @@ void Graph::ComputeAllRAndT() {
 
   shared_ptr<Frame> frame = nullptr;
   while ((frame = dataset_->GetNextFrame()) != nullptr) {
+    cout << "Compute R T between " << ref_img_->id_ << " and " << frame->id_ << endl;
     if (ref_img_ == nullptr) {
       ref_img_ = frame;
       continue;
@@ -189,20 +189,7 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
   ref_coor.at<double>(0, 1) = (double) col_pix;
   ref_coor.at<double>(0, 2) = 1.0;
   cv::Mat src_coor = H * ref_coor;
-  if (row_pix == 100 && col_pix == 100){
-    cv::Mat sd = id_to_H[ref_img_->id_][src.id_] * ref_coor;
-    sd /= sd.at<double>(0, 2);
-    cout<< ref_coor.t() << " " << sd.t() << " " << (src_coor / src_coor.at<double>(0, 2)).t() << " " << (rela_rt.R * ref_coor).t() << endl;
-//    cv::imshow("1", ref.left_img_);
-//    cv::Mat a;
-//    cv::Mat b;
-//    cv::warpPerspective(ref.left_img_, a, H, cv::Size());
-//    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
-//    cv::imshow("2", a);
-//    cv::imshow("real H", b);
-//    cv::imshow("3", src.left_img_);
-//    cv::waitKey(0);
-  }
+
   double src_row = src_coor.at<double>(0, 0) / src_coor.at<double>(0, 2);
   double src_col = src_coor.at<double>(0, 1) / src_coor.at<double>(0, 2);
   double ref_row = ref_coor.at<double>(0, 0) / ref_coor.at<double>(0, 2);
@@ -214,17 +201,17 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
   double sum_ref = 0.0, sum_src = 0.0, sum_sqre_ref = 0.0, sum_sqre_src = 0.0;
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
-      if ((src_row + win_row >= 0 && src_row + win_row <= ref_width_ && src_col + win_col >= 0
-          && src_col + win_col <= ref_height_)
-          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_width_ && ref_col + win_col >= 0
-              && ref_col + win_col <= ref_height_)) {
+      if ((src_row + win_row >= 0 && src_row + win_row <= ref_height_ && src_col + win_col >= 0
+          && src_col + win_col <= ref_width_)
+          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
+              && ref_col + win_col <= ref_width_)) {
 
         count++;
 
-        sum_src += src.left_img_.at<uchar>(src_row + win_row, src_col + win_col);
+        sum_src += src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col);
 //        sum_sqre_src += pow(src.left_img_.at<uchar>(src_row + win_row, src_col + win_col), 2);
 
-        sum_ref += ref.left_img_.at<uchar>(ref_row + win_row, ref_col + win_col);
+        sum_ref += ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col);
 //        sum_sqre_ref += pow(ref.left_img_.at<uchar>(ref_row + win_row, ref_col + win_col), 2);
       }
     }
@@ -233,24 +220,43 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
   double ref_mean = sum_ref / count;
   double src_mean = sum_src / count;
   double var = 0.0, var_ref = 0.0, var_src = 0.0;
+  if (row_pix == 500 && col_pix == 515) {
+    cout<< "haha" <<endl;
+  }
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
-      if ((src_row + win_row >= 0 && src_row + win_row <= ref_width_ && src_col + win_col >= 0
-          && src_col + win_col <= ref_height_)
-          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_width_ && ref_col + win_col >= 0
-              && ref_col + win_col <= ref_height_)) {
-        var += (src.left_img_.at<uchar>(src_row + win_row, src_col + win_col) - src_mean)
-            * (ref.left_img_.at<uchar>(ref_row + win_row, ref_col + win_col) - ref_mean);
 
-        var_src += pow(src.left_img_.at<uchar>(src_row + win_row, src_col + win_col) - src_mean, 2);
-        var_ref += pow(ref.left_img_.at<uchar>(ref_row + win_row, ref_col + win_col) - ref_mean, 2);
+      if ((src_row + win_row >= 0 && src_row + win_row <= ref_height_ && src_col + win_col >= 0
+          && src_col + win_col <= ref_width_)
+          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
+              && ref_col + win_col <= ref_width_)) {
+        var += (src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col) - src_mean)
+            * (ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col) - ref_mean);
+
+        var_src += pow(src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col) - src_mean, 2);
+        var_ref += pow(ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col) - ref_mean, 2);
       }
     }
   }
 
   double ncc = var / sqrt(var_src * var_ref);
-//  if (col_pix > 400) {
+//  if (col_pix > 500 && col_pix < 505) {
 //    cout << "col " << col_pix << " ncc " << ncc << "var "<< var << " " << var_src << " " << var_ref << endl;
+//  }
+//  if (row_pix == 500 && col_pix == 600) {
+//    cv::Mat sd = id_to_H[ref_img_->id_][src.id_] * ref_coor;
+//    sd /= sd.at<double>(0, 2);
+//    cout << ref_coor.t() << " " << (src_coor / src_coor.at<double>(0, 2)).t() << " " << endl;
+//    cout << "col " << col_pix << " ncc " << ncc << "var " << var << " " << var_src << " " << var_ref << endl;
+////    cv::imshow("1", ref.left_img_);
+////    cv::Mat a;
+////    cv::Mat b;
+////    cv::warpPerspective(ref.left_img_, a, H, cv::Size());
+////    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
+////    cv::imshow("2", a);
+////    cv::imshow("real H", b);
+////    cv::imshow("3", src.left_img_);
+////    cv::waitKey(0);
 //  }
   if (var_ref < 1e-5 || var_src < 1e-5) {
     return max_cost;
@@ -274,7 +280,7 @@ void Graph::ComputeHomography(const cv::Mat &K_src,
 //  cv::Mat cal_H = K_src * (R - T * n.t() / (n.t() * depth * K_src.inv() * p)) * K_ref.inv();
   cv::Mat cal_H = K_src * (R - T * n.t() / depth) * K_ref.inv();
 
-  
+
 //  cout << n << " " << d << " " << n.t() *d << endl;
   cal_H.copyTo(H);
 
@@ -408,10 +414,10 @@ void Graph::Propagate() {
 //      //        cout << all_frame_selection_prob[i] << ' ';
 //      //      }
 //      //      cout << endl;
-//
+
       double random_depth = rand_dist(gen);
 //      for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
-        double random = uni_dist(gen) * 0.01;
+//        double random = uni_dist(gen) * 0.01;
 //
         for (int idx = 0; idx < frames.size(); idx++) {
 //          const float prob = all_frame_selection_prob[idx];
@@ -432,7 +438,7 @@ void Graph::Propagate() {
             }
 
             sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth);
-
+//            break;
 //          }
 //        }
       }
@@ -463,7 +469,6 @@ void Graph::Propagate() {
     }
 
   }
-  cv::imwrite("depth2.jpg", depth);
   ConvertToDepthMap();
 }
 
@@ -515,8 +520,9 @@ void Graph::Rotate() {
   }
 
   for (const shared_ptr<Frame> &frame: frames) {
-    frame->left_img_ = frame->left_img_.t();
+    cv::rotate(frame->left_img_, frame->left_img_, cv::ROTATE_90_CLOCKWISE);
   }
+  cv::rotate(ref_img_->left_img_, ref_img_->left_img_, cv::ROTATE_90_CLOCKWISE);
   rotate++;
 }
 
