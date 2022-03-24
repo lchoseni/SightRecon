@@ -33,7 +33,7 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
   if (access((data_fmt % dataset_dir % cur_img_index).str().c_str(), F_OK) == -1) {
     return nullptr;
   }
-  if (cur_img_index > 10) {
+  if (cur_img_index > 2) {
     return nullptr;
   }
 
@@ -41,13 +41,15 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
   right = cv::imread((data_fmt % dataset_dir % cur_img_index).str(), cv::IMREAD_GRAYSCALE);
 
   cv::Mat resized_left, resized_right;
-
+//    cout << left.rows << ", " << left.cols << endl;
+//    cv::imshow("s", left);
+//    cv::waitKey(0);
   cv::resize(left, resized_left, cv::Size(), 1.0, 1.0, cv::INTER_NEAREST);
   cv::resize(right, resized_right, cv::Size(), 1.0, 1.0, cv::INTER_NEAREST);
 
   Frame *new_frame = new Frame();
-  new_frame->left_img_ = resized_left;
-  new_frame->right_img_ = resized_right;
+  new_frame->left_img_ = left;
+  new_frame->right_img_ = right;
   new_frame->SetCamera(left_camera_);
   cur_img_index++;
   return shared_ptr<Frame>(new_frame);
