@@ -20,17 +20,17 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   ref_height_ = ref_img_->left_img_.rows;
   ref_width_ = ref_img_->left_img_.cols;
   depth = cv::Mat(ref_height_, ref_width_, CV_64F);
-  depth_max = 500.0;
+  depth_max = 10000.0;
   depth_min = 0.0;
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
 //  start_row = 500, end_row = 600, start_col = 500, end_col = 600;
   //  start_row = 500, end_row = 1500, start_col = 500, end_col = 1500;
-// start_row = 500, end_row = 1500, start_col = 2200, end_col = 2500;
+// start_row = 500, end_row = 1000, start_col = 1200, end_col = 1700;
   start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
   cout << end_row << " x " << end_col << endl;
-
+  rotate = 0;
 }
 
 Graph::~Graph() {
@@ -221,7 +221,7 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
   double src_mean = sum_src / count;
   double var = 0.0, var_ref = 0.0, var_src = 0.0;
   if (row_pix == 500 && col_pix == 515) {
-    cout<< "haha" <<endl;
+    cout << "haha" << endl;
   }
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
@@ -348,83 +348,83 @@ void Graph::Propagate() {
       // The last one is a random depth.
 
       double sum_of_ncc_diff_depth[3] = {0.0};
-//      for (int idx = 0; idx < frames.size(); idx++) {
-//        if (id_row_back_msg.count(idx) <= 0) {
-//          id_row_back_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
-//
-//        }
-//        if (id_row_back_msg[idx].count(row) <= 0) {
-//
-//          vector<double> temp_BackMsg;
-//          double later = 1;
-//
-//          for (int back_col = end_col - 1; back_col >= start_col; --back_col) {
-//            double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, back_col));
-//
-//            later = hmm->ComputeBackwardMessage(row,
-//                                                back_col,
-//                                                end_col - 1,
-//                                                em,
-//                                                0.5,
-//                                                later,
-//                                                hmm->transition_prob_(0, 1));
-//            temp_BackMsg.push_back(later);
-//          }
-//          id_row_back_msg[idx].insert(make_pair(row, temp_BackMsg));
-//          //          for (size_t i = 0; i < temp_BackMsg.size(); i++) {
-//          //            cout << temp_BackMsg[i] << ' ';
-//          //          }
-//          //          cout << endl;
-//        }
-//        BackMsg = &id_row_back_msg[idx][row];
-//
-//        if (id_row_forward_msg.count(idx) <= 0) {
-//          id_row_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
-//        }
-//        if (id_row_back_msg[idx].count(row) <= 0) {
-//          vector<double> temp_BackMsg;
-//          id_row_forward_msg[idx].insert(make_pair(row, temp_BackMsg));
-//
-//        }
-//        double prev = 0.5;
-//        if (col - start_col >= 1) {
-//          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
-//          prev = hmm->ComputeForwardMessage(row,
-//                                            col,
-//                                            end_col,
-//                                            em,
-//                                            0.5,
-//                                            id_row_forward_msg[idx][row].at(col - start_col - 1),
-//                                            hmm->transition_prob_(0, 1));
-//        }
-//        id_row_forward_msg[idx][row].push_back(prev);
-//
-//        const float zn0 = (1.0f - prev) * (1.0f - (*BackMsg)[end_col - 1 - col]);
-//        const float zn1 = prev * (*BackMsg)[end_col - 1 - col];
-//        double q_l_m = zn1 / (zn0 + zn1);
-//
-//        all_frame_selection_prob.push_back(q_l_m);
-//
-//      }
-//
-//      // Create a new distribution.
-//      // And then select the new subset to calculate the sum of ncc.
-//      Sampling(all_frame_selection_prob);
-//      //      for (size_t i = 0; i < all_frame_selection_prob.size(); i++) {
-//      //        cout << all_frame_selection_prob[i] << ' ';
-//      //      }
-//      //      cout << endl;
+      for (int idx = 0; idx < frames.size(); idx++) {
+        if (id_row_back_msg.count(idx) <= 0) {
+          id_row_back_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+
+        }
+        if (id_row_back_msg[idx].count(row) <= 0) {
+
+          vector<double> temp_BackMsg;
+          double later = 1;
+
+          for (int back_col = end_col - 1; back_col >= start_col; --back_col) {
+            double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, back_col));
+
+            later = hmm->ComputeBackwardMessage(row,
+                                                back_col,
+                                                end_col - 1,
+                                                em,
+                                                0.5,
+                                                later,
+                                                hmm->transition_prob_(0, 1));
+            temp_BackMsg.push_back(later);
+          }
+          id_row_back_msg[idx].insert(make_pair(row, temp_BackMsg));
+          //          for (size_t i = 0; i < temp_BackMsg.size(); i++) {
+          //            cout << temp_BackMsg[i] << ' ';
+          //          }
+          //          cout << endl;
+        }
+        BackMsg = &id_row_back_msg[idx][row];
+
+        if (id_row_forward_msg.count(idx) <= 0) {
+          id_row_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+        }
+        if (id_row_back_msg[idx].count(row) <= 0) {
+          vector<double> temp_BackMsg;
+          id_row_forward_msg[idx].insert(make_pair(row, temp_BackMsg));
+
+        }
+        double prev = 0.5;
+        if (col - start_col >= 1) {
+          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
+          prev = hmm->ComputeForwardMessage(row,
+                                            col,
+                                            end_col,
+                                            em,
+                                            0.5,
+                                            id_row_forward_msg[idx][row].at(col - start_col - 1),
+                                            hmm->transition_prob_(0, 1));
+        }
+        id_row_forward_msg[idx][row].push_back(prev);
+
+        const float zn0 = (1.0f - prev) * (1.0f - (*BackMsg)[end_col - 1 - col]);
+        const float zn1 = prev * (*BackMsg)[end_col - 1 - col];
+        double q_l_m = zn1 / (zn0 + zn1);
+
+        all_frame_selection_prob.push_back(q_l_m);
+
+      }
+
+      // Create a new distribution.
+      // And then select the new subset to calculate the sum of ncc.
+      Sampling(all_frame_selection_prob);
+      //      for (size_t i = 0; i < all_frame_selection_prob.size(); i++) {
+      //        cout << all_frame_selection_prob[i] << ' ';
+      //      }
+      //      cout << endl;
 
       double random_depth = rand_dist(gen);
-//      for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
-//        double random = uni_dist(gen) * 0.01;
+      for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
+        double random = uni_dist(gen) * 0.01;
 //
         for (int idx = 0; idx < frames.size(); idx++) {
-//          const float prob = all_frame_selection_prob[idx];
+          const float prob = all_frame_selection_prob[idx];
 
           // If accept this frame, then sum the ncc value at different depth.
           // curr
-//          if (prob > random) {
+          if (prob > random) {
             sum_of_ncc_diff_depth[0] += id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col);
             if (col > 0) {
 
@@ -438,9 +438,9 @@ void Graph::Propagate() {
             }
 
             sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth);
-//            break;
-//          }
-//        }
+            break;
+          }
+        }
       }
       double minimum = 9999;
       int minimum_idx = 0;
@@ -486,11 +486,14 @@ void Graph::Sampling(vector<double> &all_prob) {
 
 void Graph::ConvertToDepthMap() {
   double min, max;
+  cv::Scalar_<double> mean;
   cv::Mat map(ref_height_, ref_width_, CV_64F);
   cv::Mat mat;
   cv::minMaxLoc(depth, &min, &max);
   map = depth / max;
   map *= 255;
+  mean = cv::mean(depth);
+//  if (mean)
 
   stringstream ss;
   ss << "depth-" << rotate << ".jpg";

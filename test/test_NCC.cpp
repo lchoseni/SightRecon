@@ -21,8 +21,8 @@ int main() {
 //  hmm.ComputeBackwardMessage()
   graph.InitialRandomDepth();
 
-    graph.Rotate();
-    graph.Rotate();
+//    graph.Rotate();
+//    graph.Rotate();
 
   for (int i = 0; i < 20; ++i) {
     graph.ComputeAllRAndT();

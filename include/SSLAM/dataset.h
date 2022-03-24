@@ -13,6 +13,7 @@ namespace sslam {
     class Dataset {
     private:
         int cur_img_index;
+
         const std::string dataset_dir;
         static std::shared_ptr<Camera> left_camera_, right_camera_;
 
