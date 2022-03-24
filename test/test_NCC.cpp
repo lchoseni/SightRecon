@@ -9,23 +9,25 @@
 #include "SSLAM/frame.h"
 #include "SSLAM/hmm.h"
 
-
-int main(){
+int main() {
   sslam::Config::SetConfigFile(sslam::Config::config_file_);
   sslam::FrontEnd front_end;
 
   sslam::Dataset dataset;
   sslam::Graph graph = sslam::Graph(&dataset, dataset.GetNextFrame());
-  graph.ComputeAllRAndT();
 
   int win_size = 5;
   int src_id = 0;
 //  hmm.ComputeBackwardMessage()
   graph.InitialRandomDepth();
 
-  for (int i = 0; i < 20; ++i) {
-    graph.Propagate();
+    graph.Rotate();
+    graph.Rotate();
 
+  for (int i = 0; i < 20; ++i) {
+    graph.ComputeAllRAndT();
+    graph.Propagate();
+    graph.Rotate();
   }
 
 }

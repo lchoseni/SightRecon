@@ -18,6 +18,7 @@ class Graph {
  private:
   map<unsigned int, map<unsigned int, RELA_RT>> id_to_RTs_;
   map<unsigned int, map<unsigned int, cv::Mat>> id_to_NCC;
+  map<unsigned int, map<unsigned int, cv::Mat>> id_to_H;
   vector<shared_ptr<Frame>> frames;
   cv::Mat depth;
   Dataset *dataset_;
@@ -25,6 +26,7 @@ class Graph {
   double depth_max, depth_min;
   Hmm *hmm;
   int start_row, end_row, start_col, end_col;
+  int rotate = 0;
 
  public:
 
@@ -43,12 +45,14 @@ class Graph {
                          const cv::Mat &R,
                          const cv::Mat &T,
                          double &depth,
-                         cv::Mat &H);
+                         cv::Mat &H,
+                         int row, int col);
   void ComputeAllNCC(int win_size);
   void Propagate();
   void Sampling(vector<double> &all_prob);
   double ComputeEmissionProb(double ncc);
   void ConvertToDepthMap();
+  void Rotate();
   ~Graph();
 };
 
