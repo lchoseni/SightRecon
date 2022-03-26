@@ -22,6 +22,7 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
+//  start_row = 500, end_row = 1000, start_col = 500, end_col = 1500;
   start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
 
 }
@@ -373,10 +374,12 @@ void Graph::Propagate() {
       switch (minimum_idx) {
         case 1:
           if (col > 0) {
-            depth.at<double>(row, col) = depth.at<double>(row, col - 1);
+//            depth.at<double>(row, col) = depth.at<double>(row, col - 1);
+            depth.at<double>(col, row) = depth.at<double>(col - 1, row);
           }
           break;
-        case 2:depth.at<double>(row, col) = random_depth;
+//        case 2:depth.at<double>(row, col) = random_depth;
+        case 2:depth.at<double>(col, row) = random_depth;
           break;
         default:break;
 
@@ -402,13 +405,19 @@ void Graph::Sampling(vector<double> &all_prob) {
 
 void Graph::ConvertToDepthMap() {
   double min, max;
-  cv::Mat map;
+  cv::Mat map(ref_height_, ref_width_, CV_64F);
+  cv::Mat mat;
   cv::minMaxLoc(depth, &min, &max);
   cout << "max and min is " << max << " " << min << endl;
   map = depth / max;
   map *= 255;
+  cv::resize(map, mat, cv::Size(), 0.2, 0.2, cv::INTER_NEAREST);
+
+//  cv::imshow("depth", mat);
+//  cv::waitKey(0);
   // cout << map;
   cv::imwrite("depth.jpg", map);
+  cv::imwrite("depth1.jpg", depth);
 
 }
 

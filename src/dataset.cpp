@@ -42,8 +42,8 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
 
   cv::Mat resized_left, resized_right;
 
-  cv::resize(left, resized_left, cv::Size(), 1.0, 1.0, cv::INTER_NEAREST);
-  cv::resize(right, resized_right, cv::Size(), 1.0, 1.0, cv::INTER_NEAREST);
+  cv::resize(left, resized_left, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
+  cv::resize(right, resized_right, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
 
   Frame *new_frame = new Frame();
   new_frame->left_img_ = resized_left;
