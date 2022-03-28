@@ -106,13 +106,13 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
   cv::eigen2cv(frame2->GetCamera()->K(), K2);
 
   cv::Mat ess = cv::findEssentialMat(pts1, pts2, K1);
-  // cout << "Essential matrix is " << ess << endl;
+  cout << "Essential matrix is " << ess << endl;
 
   cv::Mat R, t;
   if (cv::recoverPose(ess, pts1, pts2, R, t) <= 0) {
     return false;
   }
-//  cout << "R is " << R << ", and T is " << t << endl;
+ cout << "R is " << R << ", and T is " << t << endl;
   R_ = R;
   t_ = t;
   return true;
@@ -206,7 +206,7 @@ void Graph::ComputeHomography(const cv::Mat &K_src,
                               cv::Mat &H) {
   double arr_n[3][1] = {{0}, {0}, {1.0}};
   cv::Mat n(3, 1, CV_64F, &arr_n);
-  cv::Mat cal_H = K_src * (R - T * n.t() / depth) * K_ref.inv();
+  cv::Mat cal_H = K_src * (R - T * n.t() / (depth * n.t())) * K_ref.inv();
 
   H.at<double>(0, 0) = cal_H.at<double>(0, 0);
   H.at<double>(0, 1) = cal_H.at<double>(0, 1);
@@ -374,12 +374,12 @@ void Graph::Propagate() {
       switch (minimum_idx) {
         case 1:
           if (col > 0) {
-//            depth.at<double>(row, col) = depth.at<double>(row, col - 1);
-            depth.at<double>(col, row) = depth.at<double>(col - 1, row);
+           depth.at<double>(row, col) = depth.at<double>(row, col - 1);
+            // depth.at<double>(col, row) = depth.at<double>(col - 1, row);
           }
           break;
-//        case 2:depth.at<double>(row, col) = random_depth;
-        case 2:depth.at<double>(col, row) = random_depth;
+       case 2:depth.at<double>(row, col) = random_depth;
+        // case 2:depth.at<double>(col, row) = random_depth;
           break;
         default:break;
 

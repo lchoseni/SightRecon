@@ -42,8 +42,8 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
 
   cv::Mat resized_left, resized_right;
 
-  cv::resize(left, resized_left, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
-  cv::resize(right, resized_right, cv::Size(), 0.5, 0.5, cv::INTER_NEAREST);
+  cv::resize(left, resized_left, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
+  cv::resize(right, resized_right, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
 
   Frame *new_frame = new Frame();
   new_frame->left_img_ = resized_left;
@@ -80,7 +80,7 @@ bool Dataset::GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3,
     std::shared_ptr<Vec3> t(new Vec3());
     *t << projection_data[3], projection_data[7], projection_data[11];
 //            *t = K->inverse() * *t;
-//            *K = *K * 0.5;
+           *K = *K * 0.5;
     Ks.push_back(K);
     ts.push_back(t);
   }
