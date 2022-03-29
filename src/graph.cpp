@@ -1,9 +1,12 @@
 #include <opencv2/core.hpp>
 #include <time.h>
 #include <math.h>
+#include <memory>
 #include <random>
 #include <iostream>
 #include <unistd.h>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 #include "SSLAM/graph.h"
 #include "SSLAM/common_include.h"
@@ -11,6 +14,9 @@
 #include "SSLAM/frame.h"
 #include "SSLAM/dataset.h"
 #include "SSLAM/utils/utils.h"
+#include "SSLAM/map_point.h"
+#include "SSLAM/map.h"
+#include "SSLAM/BA.h"
 
 using namespace cv;
 
@@ -20,17 +26,19 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   ref_height_ = ref_img_->left_img_.rows;
   ref_width_ = ref_img_->left_img_.cols;
   depth = cv::Mat(ref_height_, ref_width_, CV_64F);
-  depth_max = 10000.0;
-  depth_min = 0.0;
+  depth_max = 10;
+  depth_min = 0;
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
 //  start_row = 500, end_row = 600, start_col = 500, end_col = 600;
-  //  start_row = 500, end_row = 1500, start_col = 500, end_col = 1500;
-// start_row = 500, end_row = 1000, start_col = 1200, end_col = 1700;
+//    start_row = 500, end_row = 1500, start_col = 500, end_col = 1500;
+//  start_row = 500, end_row = 1000, start_col = 1200, end_col = 1700;
   start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
-  cout << end_row << " x " << end_col << endl;
+  cout << ref_img->left_img_.rows << " x " << ref_img->left_img_.cols << endl;
   rotate = 0;
+  g_map_ = std::make_shared<GMap>();
+  cout << "K is " << ref_img->GetCamera()->K() << endl;
 }
 
 Graph::~Graph() {
@@ -48,38 +56,45 @@ void Graph::InitialRandomDepth() {
   }
 }
 
-bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &frame2, cv::Mat &R_, cv::Mat &t_) {
+bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
+                                  shared_ptr<Frame> &frame2,
+                                  cv::Mat &R_,
+                                  cv::Mat &t_,
+                                  cv::Mat &points4D_,
+                                  cv::Mat &inlinerMask_,
+                                  vector<cv::DMatch> &matches_) {
 
   if (frame1 == nullptr || frame2 == nullptr) {
     return false;
   }
-
   front_end_->DetectFeatures(frame1);
   front_end_->DetectFeatures(frame2);
 
   cv::Mat descriptors_1, descriptors_2;
-  cv::Ptr<cv::FeatureDetector> detector = cv::ORB::create();
-  cv::Ptr<cv::DescriptorExtractor> descriptor = cv::ORB::create();
-  cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce-Hamming");
+  cv::Ptr<cv::Feature2D> detector = cv::SIFT::create();
+  cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce");
 
-  detector->detect(frame1->left_img_, frame1->left_key_points_);
-  detector->detect(frame2->left_img_, frame2->left_key_points_);
 
-  descriptor->compute(frame1->left_img_, frame1->left_key_points_, descriptors_1);
-  descriptor->compute(frame2->left_img_, frame2->left_key_points_, descriptors_2);
+  detector->compute(frame1->left_img_, frame1->left_key_points_, descriptors_1);
+  detector->compute(frame2->left_img_, frame2->left_key_points_, descriptors_2);
+
+  descriptors_1.copyTo(frame1->descriptors);
+  descriptors_2.copyTo(frame2->descriptors);
 
   vector<cv::DMatch> matches;
   matcher->match(descriptors_1, descriptors_2, matches);
 
-  auto min_max = minmax_element(matches.begin(), matches.end(),
-                                [](const cv::DMatch &m1, const cv::DMatch &m2) { return m1.distance < m2.distance; });
+  double min_dist = 10000, max_dist = 0;
 
-  double min_dist = min_max.first->distance;
-  double max_dist = min_max.second->distance;
+  for (int i = 0; i < descriptors_1.rows; i++) {
+    double dist = matches[i].distance;
+    if (dist < min_dist) min_dist = dist;
+    if (dist > max_dist) max_dist = dist;
+  }
 
   std::vector<cv::DMatch> good_matches;
   for (int i = 0; i < descriptors_1.rows; i++) {
-    if (matches[i].distance <= max(2 * min_dist, 30.0)) {
+    if (matches[i].distance <= max(0.0, 4 * min_dist)) {
       good_matches.push_back(matches[i]);
     }
   }
@@ -94,106 +109,172 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
   std::vector<cv::Point2f> pts1, pts2;
   std::vector<cv::KeyPoint> ky_pts1, ky_pts2;
   for (auto &match: good_matches) {
+
     pts1.push_back(frame1->left_key_points_[match.queryIdx].pt);
     pts2.push_back(frame2->left_key_points_[match.trainIdx].pt);
   }
+
+//  cvv::debugDMatch(keyFrame1->image, inlierKeyPoints1, keyFrame2->image, inlierKeyPoints2, inlierMatches, CVVISUAL_LOCATION,
+//                   "match used in triangulation");
 
   if (pts1.size() < 8 || pts2.size() < 8) {
     return false;
   }
 
-  cv::Mat K1, K2;
+  cv::Mat K1, K2, inlinerMask, points4D;
 
   cv::eigen2cv(frame1->GetCamera()->K(), K1);
   cv::eigen2cv(frame2->GetCamera()->K(), K2);
-  cv::Mat ess = cv::findEssentialMat(pts1, pts2, K1);
-  if (id_to_H.count(ref_img_->id_) <= 0) {
-    id_to_H.insert(make_pair(ref_img_->id_, map<unsigned int, cv::Mat>()));
+
+  cv::Mat ess = cv::findEssentialMat(pts1, pts2, K1,
+                                     RANSAC, 0.999, 1.0, inlinerMask);
+  cout << "Essential matrix is " << endl << ess / ess.at<double>(2, 2) << endl;
+  int nPointsFindEssentialMat = countNonZero(inlinerMask);
+  cout << "findEssentialMat: \n\t" << nPointsFindEssentialMat << " valid points, " <<
+       (float) nPointsFindEssentialMat * 100 / pts1.size()
+       << "% of " << pts1.size() << " points are used" << endl;
+  if (id_to_H.count(frame1->id_) <= 0) {
+    id_to_H.insert(make_pair(frame1->id_, map<unsigned int, cv::Mat>()));
   }
-  if (id_to_H[ref_img_->id_].count(frame2->id_) <= 0) {
-    id_to_H[ref_img_->id_].insert(make_pair(frame2->id_, cv::Mat()));
+  if (id_to_H[frame1->id_].count(frame2->id_) <= 0) {
+    id_to_H[frame1->id_].insert(make_pair(frame2->id_, cv::Mat()));
   }
 
-  id_to_H[ref_img_->id_][frame2->id_] = cv::findHomography(pts1, pts2);
-//  cout << "H is " << id_to_H[ref_img_->id_][frame2->id_] << endl;
+  id_to_H[frame1->id_][frame2->id_] = cv::findHomography(pts1, pts2, RANSAC, 3);
+//  cout << "H is " << endl << id_to_H[frame1->id_][frame2->id_] << endl;
+//  cv::Mat out;
+//  cv::warpPerspective(ref_img_->left_img_, out, id_to_H[frame1->id_][frame2->id_], cv::Size());
+//  cv::imshow("ref", frame1->left_img_);
+//  cv::imshow("src", frame2->left_img_);
+//  cv::imshow("real H", out);
+//  cv::waitKey(3);
+//  stringstream ss;
+//  ss << frame1->id_ << "_to_" << frame2->id_ << ".jpg";
+//  imwrite(ss.str(), out);
   cv::Mat R, t;
-  if (cv::recoverPose(ess, pts1, pts2, R, t) <= 0) {
+  if (cv::recoverPose(ess, pts1, pts2, K1, R, t, 100, inlinerMask,
+                      points4D) <= 0) {
+    return false;
+  }
+  if (inlinerMask.rows < 30){
     return false;
   }
   R_ = R;
   t_ = t;
+  points4D.copyTo(points4D_);
+  inlinerMask.copyTo(inlinerMask_);
+  matches_ = matches;
+
   return true;
 }
+
+
 
 void Graph::ComputeAllRAndT() {
 
   shared_ptr<Frame> frame = nullptr;
   while ((frame = dataset_->GetNextFrame()) != nullptr) {
-    cout << "Compute R T between " << ref_img_->id_ << " and " << frame->id_ << endl;
     if (ref_img_ == nullptr) {
       ref_img_ = frame;
       continue;
     }
-    cv::Mat R, t;
-    if (!ComputeRAndTOfTwoImgs(ref_img_, frame, R, t)) {
-      cout << "Can not get R and T from " << frame->id_ << endl;
+
+    readed_frames.push_back(frame);
+
+  }
+  frames.clear();
+
+  for (shared_ptr<Frame> qualified_frame: readed_frames) {
+    cv::Mat R, t, points4D, inlinerMask;
+    vector<cv::DMatch> matches;
+    cout << "Compute R T between " << ref_img_->id_ << " and " << qualified_frame->id_ << endl;
+    if (!ComputeRAndTOfTwoImgs(ref_img_, qualified_frame, R, t, points4D, inlinerMask, matches)) {
+      cout << "Can not get R and T from " << qualified_frame->id_ << endl;
       continue;
     }
-    frames.push_back(frame);
-    cout << R << t << endl;
+    frames.push_back(qualified_frame);
+
+//    if (id_to_trans.count(ref_img_->id_) == 0){
+//      id_to_trans.insert(make_pair(ref_img_->id_, map<unsigned int, SE3>()));
+//    }
+//    if (id_to_trans[ref_img_->id_].count(frame->id_) == 0){
+//      ref_img_->Tcw.inverse().;
+//      auto rotation = ref_img_->Tcw.inverse() * frame->Tcw;
+//
+//      id_to_trans[ref_img_->id_].insert(make_pair(frame->id_, ref_img_->Tcw.matrix().inverse() * frame->Tcw.matrix()));
+//    }
+
+
+    cout << R / R.at<double>(2, 2) << t << endl;
+//    cout << "data from file is " << id_to_trans[ref_img_->id_][frame->id_].so3().matrix() << endl<< id_to_trans[ref_img_->id_][frame->id_].translation().matrix() << endl;
     RELA_RT rela_rt;
+
+    cv::Mat R_i, C_i, R_j, C_j;
+    cv::eigen2cv(ref_img_->R_c_w, R_i);
+    cv::eigen2cv(ref_img_->C_c_w, C_i);
+    cv::eigen2cv(qualified_frame->R_c_w, R_j);
+    cv::eigen2cv(qualified_frame->C_c_w, C_j);
+        rela_rt.R_i = R_j;
+    rela_rt.C_i = C_i;
+    rela_rt.R_j = R_j;
+    rela_rt.C_j = C_j;
+
+//    rela_rt.R_i = ref_img_->R_c_w;
+//    rela_rt.C_i = ref_img_->C_c_w;
+//    rela_rt.R_j = qualified_frame->R_c_w;
+//    rela_rt.C_j = qualified_frame->C_c_w;
+
     rela_rt.R = R;
     rela_rt.T = t;
+    rela_rt.points4D = points4D;
+    rela_rt.inlinerMask = inlinerMask;
+    rela_rt.matches = matches;
     if (id_to_RTs_.count(ref_img_->id_) <= 0) {
       map<unsigned int, RELA_RT> map;
-      map.insert(make_pair(frame->id_, rela_rt));
+      map.insert(make_pair(qualified_frame->id_, rela_rt));
       id_to_RTs_.insert(make_pair(ref_img_->id_, map));
     } else {
-      id_to_RTs_[ref_img_->id_].insert(make_pair(frame->id_, rela_rt));
+      id_to_RTs_[ref_img_->id_].insert(make_pair(qualified_frame->id_, rela_rt));
     }
+
   }
 }
 
-double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int win_size, double depth) {
+
+double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int win_size, double depth_pix, cv::Mat K_src, cv::Mat K_ref) {
   double max_cost = 2.0;
   RELA_RT rela_rt = id_to_RTs_[ref.id_][src.id_];
-  cv::Mat H(3, 3, CV_64F), K_ref(3, 3, CV_64F), K_src(3, 3, CV_64F);
-  cv::eigen2cv(src.GetCamera()->K(), K_src);
-  cv::eigen2cv(ref.GetCamera()->K(), K_ref);
+  cv::Mat H(3, 3, CV_64F);
 //  cout << rela_rt.R << rela_rt.T << endl;
   ComputeHomography(K_src,
                     K_ref,
-                    rela_rt.R,
-                    rela_rt.T,
-                    depth,
+                    rela_rt,
+                    depth_pix,
                     H, row_pix, col_pix);
 
-//  if (src.id_ == 4) {
-//    cv::imshow("1", ref.left_img_);
-//    cv::Mat a;
-//    cv::Mat b;
-//    cv::warpPerspective(ref.left_img_, a, H, cv::Size());
-//    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
-//    cv::imshow("2", a);
-//    cv::imshow("real H", b);
-//    cv::imshow("3", src.left_img_);
-//    cv::waitKey(0);
-//  }
 
   // Compute the image coordinate after homography warping.
   // If it's outside the boarder, ignore it and return the minimum NCC.
-  double ref_coor_homo[3][1] = {{(double) row_pix}, {(double) col_pix}, {1.0}};
   cv::Mat ref_coor = cv::Mat(3, 1, CV_64F);
 
-  ref_coor.at<double>(0, 0) = (double) row_pix;
-  ref_coor.at<double>(0, 1) = (double) col_pix;
-  ref_coor.at<double>(0, 2) = 1.0;
+  ref_coor.at<double>(0, 0) = (double) col_pix;
+  ref_coor.at<double>(1, 0) = (double) row_pix;
+  ref_coor.at<double>(2, 0) = 1.0;
   cv::Mat src_coor = H * ref_coor;
+//  cout << "ref coor is " << ref_coor.t() << endl << "src coor is" << src_coor.t() << endl;
+//  cout << depth_pix << " Converted by H is " <<   (id_to_H[ref.id_][src.id_] * ref_coor).t() << endl;;
+//  ref_coor.at<double>(0, 0) = (double) row_pix;
+//  ref_coor.at<double>(0, 1) = (double) col_pix;
+//  ref_coor.at<double>(0, 2) = 1.0;
+//
+//  src_coor = H * ref_coor;
+//  cout <<endl << endl<< "ref coor is " << ref_coor.t() << endl << "src coor is" << src_coor.t() << endl;
+//  cout << depth_pix << " Converted by H is " <<   (id_to_H[ref.id_][src.id_] * ref_coor).t() << endl;;
 
-  double src_row = src_coor.at<double>(0, 0) / src_coor.at<double>(0, 2);
-  double src_col = src_coor.at<double>(0, 1) / src_coor.at<double>(0, 2);
-  double ref_row = ref_coor.at<double>(0, 0) / ref_coor.at<double>(0, 2);
-  double ref_col = ref_coor.at<double>(0, 1) / ref_coor.at<double>(0, 2);
+  double src_col = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
+  double src_row = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
+  double ref_col = ref_coor.at<double>(1, 0) / ref_coor.at<double>(2, 0);
+  double ref_row = ref_coor.at<double>(0, 0) / ref_coor.at<double>(2, 0);
 
   // Calculate the ncc value of the matched patch.
   int half_win = win_size / 2;
@@ -216,13 +297,15 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
       }
     }
   }
+  if (count < 15 && count >0){
+    out_bound_pix++;
+//    return max_cost;
+  }
+
 
   double ref_mean = sum_ref / count;
   double src_mean = sum_src / count;
   double var = 0.0, var_ref = 0.0, var_src = 0.0;
-  if (row_pix == 500 && col_pix == 515) {
-    cout << "haha" << endl;
-  }
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
 
@@ -240,63 +323,66 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
   }
 
   double ncc = var / sqrt(var_src * var_ref);
-//  if (col_pix > 500 && col_pix < 505) {
-//    cout << "col " << col_pix << " ncc " << ncc << "var "<< var << " " << var_src << " " << var_ref << endl;
-//  }
-//  if (row_pix == 500 && col_pix == 600) {
-//    cv::Mat sd = id_to_H[ref_img_->id_][src.id_] * ref_coor;
-//    sd /= sd.at<double>(0, 2);
+
+  if (row_pix == 50 && col_pix == 50) {
+    cv::Mat sd = id_to_H[ref_img_->id_][src.id_] * ref_coor;
+    sd /= sd.at<double>(0, 2);
 //    cout << ref_coor.t() << " " << (src_coor / src_coor.at<double>(0, 2)).t() << " " << endl;
-//    cout << "col " << col_pix << " ncc " << ncc << "var " << var << " " << var_src << " " << var_ref << endl;
-////    cv::imshow("1", ref.left_img_);
-////    cv::Mat a;
-////    cv::Mat b;
-////    cv::warpPerspective(ref.left_img_, a, H, cv::Size());
-////    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
-////    cv::imshow("2", a);
-////    cv::imshow("real H", b);
-////    cv::imshow("3", src.left_img_);
-////    cv::waitKey(0);
-//  }
-  if (var_ref < 1e-5 || var_src < 1e-5) {
-    return max_cost;
+//    cout << "col " << col_pix << " ncc " << ncc << endl;
+    cv::Mat a;
+    cv::Mat b;
+    cv::warpPerspective(ref.left_img_, a, H, cv::Size());
+    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
+    cv::imshow("after computed H", a);
+    cv::imshow("real H", b);
+    cv::imshow("src", src.left_img_);
+    cv::waitKey(5);
   }
+  if (count)
+    if (var_ref < 1e-5 || var_src < 1e-5) {
+      return max_cost;
+    }
   return max(0.0, min(max_cost, 1.0 - ncc));
 }
 
 void Graph::ComputeHomography(const cv::Mat &K_src,
                               const cv::Mat &K_ref,
-                              const cv::Mat &R,
-                              const cv::Mat &T,
-                              double &depth,
+                              RELA_RT rt,
+                              double &depth_pix,
                               cv::Mat &H,
                               int row, int col) {
   double arr_n[3][1] = {{0}, {0}, {1.0}};
-  double arr_d[3][1] = {{1}, {1}, {depth}};
+  double arr_d[3][1] = {{1}, {1}, {depth_pix}};
   double arr_p[3][1] = {{(double) col}, {(double) row}, {1}};
   cv::Mat n(3, 1, CV_64F, &arr_n);
   cv::Mat d(3, 1, CV_64F, &arr_d);
   cv::Mat p(3, 1, CV_64F, &arr_p);
-//  cv::Mat cal_H = K_src * (R - T * n.t() / (n.t() * depth * K_src.inv() * p)) * K_ref.inv();
-  cv::Mat cal_H = K_src * (R - T * n.t() / depth) * K_ref.inv();
+//  cv::Mat cal_H = K_src * (rt.R - rt.T * n.t() / depth_pix) * K_ref.inv();
+  cv::Mat cal_H = K_src * (rt.R_j * rt.R_i.t() +  rt.R_j * (rt.C_i - rt.C_j) * n.t() / (n.t() * depth_pix * K_ref.inv() * p)) * K_ref.inv();
 
 
-//  cout << n << " " << d << " " << n.t() *d << endl;
   cal_H.copyTo(H);
 
 }
 
 void Graph::ComputeAllNCC(int win_size) {
+  cv::Mat H(3, 3, CV_64F), K_ref(3, 3, CV_64F), K_src(3, 3, CV_64F);
+  cv::eigen2cv(ref_img_->GetCamera()->K(), K_src);
+  cv::eigen2cv(ref_img_->GetCamera()->K(), K_ref);
   for (int idx = 0; idx < frames.size(); idx++) {
+  out_bound_pix = 0;
 
-    cout << "Compute all ncc at image" << frames[idx]->id_ << endl;
+    cout << "Pre-Compute all ncc at image" << frames[idx]->id_ << endl;
     for (int row = start_row; row < end_row; ++row) {
+
+//    cout << "Pre-Compute all ncc at row " << row << endl;
       for (int col = start_col; col < end_col; ++col) {
         double one_minus_ncc = ComputeNCC(*ref_img_,
                                           *frames[idx],
                                           row,
                                           col, win_size,
-                                          depth.at<double>(row, col));
+                                          depth.at<double>(row, col),
+                                              K_ref, K_src);
 
         if (id_to_NCC.count(ref_img_->id_) <= 0) {
           id_to_NCC.insert(make_pair(ref_img_->id_, map<unsigned int, cv::Mat>()));
@@ -314,6 +400,25 @@ void Graph::ComputeAllNCC(int win_size) {
         }
       }
     }
+    cout << "pixel partly counted is " << out_bound_pix << endl;
+  }
+}
+
+void Graph::UpdateRowCol(int &row, int &col) {
+  switch (rotate % 4) {
+    case 0:row++;
+      col++;
+      break;
+    case 1:col++;
+      row++;
+      break;
+    case 2:row++;
+      col--;
+      break;
+    case 3:row--;
+      col++;
+
+    default:break;
   }
 }
 
@@ -321,10 +426,7 @@ void Graph::Propagate() {
   int win_size = 5;
   ComputeAllNCC(win_size);
 
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  uniform_int_distribution<int> uni_dist(0, 100);
-  uniform_real_distribution<double> rand_dist(depth_min, depth_max);
+
 
   // Compute Back and Forward message Firstly.
   // And the emission probability at specific pixel to get q(Z_l^m)
@@ -332,144 +434,354 @@ void Graph::Propagate() {
   // We use accept-reject sampling to choose some images and find
   // Compute three depth hypothese and choose the smallest one.
 
-  for (int row = start_row; row < end_row; row++) {
+  if (rotate % 4 == 0) {
 
-    // Compute the backward message first.
-    // Then compute each q(Z_l^m)
+    for (int row = start_row; row < end_row; row++) {
 
-    map<unsigned int, map<unsigned int, vector<double>>> id_row_back_msg;
-    map<unsigned int, map<unsigned int, vector<double>>> id_row_forward_msg;
-    cout << "Calculate at " << row << endl;
-    for (int col = start_col; col < end_col; ++col) {
-      vector<double> all_frame_selection_prob;
-      vector<double> *BackMsg;
-      // The first one is current depth hypothesis,
-      // The second one is the last pixel depth hypothesis,
-      // The last one is a random depth.
+      // Compute the backward message first.
+      // Then compute each q(Z_l^m)
 
-      double sum_of_ncc_diff_depth[3] = {0.0};
-      for (int idx = 0; idx < frames.size(); idx++) {
-        if (id_row_back_msg.count(idx) <= 0) {
-          id_row_back_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
-
-        }
-        if (id_row_back_msg[idx].count(row) <= 0) {
-
-          vector<double> temp_BackMsg;
-          double later = 1;
-
-          for (int back_col = end_col - 1; back_col >= start_col; --back_col) {
-            double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, back_col));
-
-            later = hmm->ComputeBackwardMessage(row,
-                                                back_col,
-                                                end_col - 1,
-                                                em,
-                                                0.5,
-                                                later,
-                                                hmm->transition_prob_(0, 1));
-            temp_BackMsg.push_back(later);
-          }
-          id_row_back_msg[idx].insert(make_pair(row, temp_BackMsg));
-          //          for (size_t i = 0; i < temp_BackMsg.size(); i++) {
-          //            cout << temp_BackMsg[i] << ' ';
-          //          }
-          //          cout << endl;
-        }
-        BackMsg = &id_row_back_msg[idx][row];
-
-        if (id_row_forward_msg.count(idx) <= 0) {
-          id_row_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
-        }
-        if (id_row_back_msg[idx].count(row) <= 0) {
-          vector<double> temp_BackMsg;
-          id_row_forward_msg[idx].insert(make_pair(row, temp_BackMsg));
-
-        }
-        double prev = 0.5;
-        if (col - start_col >= 1) {
-          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
-          prev = hmm->ComputeForwardMessage(row,
-                                            col,
-                                            end_col,
-                                            em,
-                                            0.5,
-                                            id_row_forward_msg[idx][row].at(col - start_col - 1),
-                                            hmm->transition_prob_(0, 1));
-        }
-        id_row_forward_msg[idx][row].push_back(prev);
-
-        const float zn0 = (1.0f - prev) * (1.0f - (*BackMsg)[end_col - 1 - col]);
-        const float zn1 = prev * (*BackMsg)[end_col - 1 - col];
-        double q_l_m = zn1 / (zn0 + zn1);
-
-        all_frame_selection_prob.push_back(q_l_m);
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_back_msg;
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_forward_msg;
+      cout << "Calculate at row " << row << endl;
+      for (int col = start_col; col < end_col; col++) {
+        ComputeSelectionProb(row, col, id_row_back_msg, id_row_forward_msg, win_size);
 
       }
 
-      // Create a new distribution.
-      // And then select the new subset to calculate the sum of ncc.
-      Sampling(all_frame_selection_prob);
-      //      for (size_t i = 0; i < all_frame_selection_prob.size(); i++) {
-      //        cout << all_frame_selection_prob[i] << ' ';
-      //      }
-      //      cout << endl;
+    }
+  } else if (rotate % 4 == 1) {
+    for (int col = start_col; col < end_col; col++) {
+      // Compute the backward message first.
+      // Then compute each q(Z_l^m)
 
-      double random_depth = rand_dist(gen);
-      for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
-        double random = uni_dist(gen) * 0.01;
-//
-        for (int idx = 0; idx < frames.size(); idx++) {
-          const float prob = all_frame_selection_prob[idx];
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_back_msg;
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_forward_msg;
+      cout << "Calculate at col " << col << endl;
+      for (int row = start_row; row < end_row; row++) {
+        ComputeSelectionProb(row, col, id_row_back_msg, id_row_forward_msg, win_size);
 
-          // If accept this frame, then sum the ncc value at different depth.
-          // curr
-          if (prob > random) {
-            sum_of_ncc_diff_depth[0] += id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col);
-            if (col > 0) {
+      }
 
-              sum_of_ncc_diff_depth[1] +=
-                  ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, depth.at<double>(row, col - 1));
+    }
+  } else if (rotate % 4 == 2) {
+    for (int row = start_row; row < end_row; row++) {
 
-            } else {
-              // prev
-              sum_of_ncc_diff_depth[1] += id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col);
+      // Compute the backward message first.
+      // Then compute each q(Z_l^m)
 
-            }
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_back_msg;
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_forward_msg;
+      cout << "Calculate at row " << row << endl;
+      for (int col = start_col; col > end_col; col--) {
+        ComputeSelectionProb(row, col, id_row_back_msg, id_row_forward_msg, win_size);
 
-            sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth);
-            break;
+      }
+
+    }
+  } else {
+    for (int col = start_col; col < end_col; col++) {
+      // Compute the backward message first.
+      // Then compute each q(Z_l^m)
+
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_back_msg;
+      map<unsigned int, map<unsigned int, vector<double>>> id_row_forward_msg;
+      cout << "Calculate at col " << col << endl;
+      for (int row = start_row; row > end_row; row--) {
+        ComputeSelectionProb(row, col, id_row_back_msg, id_row_forward_msg, win_size);
+      }
+
+    }
+  }
+
+  ConvertToDepthMap();
+
+}
+
+void Graph::ComputeSelectionProb(int row,
+                                 int col,
+                                 map<unsigned int, map<unsigned int, vector<double>>> &id_back_msg,
+                                 map<unsigned int, map<unsigned int, vector<double>>> &id_forward_msg,
+                                 int win_size) {
+  cv::Mat H(3, 3, CV_64F), K_ref(3, 3, CV_64F), K_src(3, 3, CV_64F);
+  cv::eigen2cv(ref_img_->GetCamera()->K(), K_src);
+  cv::eigen2cv(ref_img_->GetCamera()->K(), K_ref);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  uniform_int_distribution<int> uni_dist(0, 100);
+  uniform_real_distribution<double> rand_dist(depth_min, depth_max);
+  vector<double> all_frame_selection_prob;
+  vector<double> *BackMsg;
+  // The first one is current depth hypothesis,
+  // The second one is the last pixel depth hypothesis,
+  // The last one is a random depth.
+
+  double sum_of_ncc_diff_depth[3] = {0.0};
+  for (int idx = 0; idx < frames.size(); idx++) {
+    if (id_back_msg.count(idx) <= 0) {
+      id_back_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+    }
+
+    if (rotate % 4 == 0) {
+      if (id_back_msg[idx].count(row) <= 0) {
+
+        vector<double> temp_BackMsg;
+        double later = 1;
+        for (int back_col = end_col - 1; back_col >= start_col; --back_col) {
+          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, back_col));
+
+          later = hmm->ComputeBackwardMessage(row,
+                                              back_col,
+                                              end_col - 1,
+                                              em,
+                                              0.5,
+                                              later,
+                                              hmm->transition_prob_(0, 1));
+          temp_BackMsg.push_back(later);
+          if (row == 0 && idx == 0){
+//            cout << "Back Message of row and col " << row << '\t' << back_col << " is " << later << endl;
           }
         }
+        id_back_msg[idx].insert(make_pair(row, temp_BackMsg));
+        BackMsg = &id_back_msg[idx][row];
       }
-      double minimum = 9999;
-      int minimum_idx = 0;
-      for (int idx = 0; idx < 3; ++idx) {
-        if (minimum > sum_of_ncc_diff_depth[idx]) {
-          minimum_idx = idx;
-          minimum = sum_of_ncc_diff_depth[idx];
+      if (id_forward_msg.count(idx) <= 0) {
+        id_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+      }
+      if (id_forward_msg[idx].count(row) <= 0) {
+        id_forward_msg[idx].insert(make_pair(row, vector<double>()));
+
+      }
+      double prev = 0.5;
+      if (col - start_col >= 1) {
+        double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
+        prev = hmm->ComputeForwardMessage(row,
+                                          col,
+                                          end_col - 1,
+                                          em,
+                                          0.5,
+                                          id_forward_msg[idx][row].at(col - 1),
+                                          hmm->transition_prob_(0, 1));
+      }
+      id_forward_msg[idx][row].push_back(prev);
+
+      const double zn0 = (1.0 - prev) * (1.0f - (*BackMsg)[end_col - 1 - col]);
+      const double zn1 = prev * (*BackMsg)[end_col - 1 - col];
+      double q_l_m = zn1 / (zn0 + zn1);
+
+//      cout << "selection prob is " << q_l_m << endl;
+
+      all_frame_selection_prob.push_back(q_l_m);
+
+    } else if (rotate % 4 == 1) {
+      if (id_back_msg[idx].count(col) <= 0) {
+
+        vector<double> temp_BackMsg;
+        double later = 1;
+        for (int back_row = end_row - 1; back_row >= start_row; --back_row) {
+          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(back_row, col));
+
+          later = hmm->ComputeBackwardMessage(back_row,
+                                              col,
+                                              end_row - 1,
+                                              em,
+                                              0.5,
+                                              later,
+                                              hmm->transition_prob_(0, 1));
+          temp_BackMsg.push_back(later);
         }
+        id_back_msg[idx].insert(make_pair(col, temp_BackMsg));
+        BackMsg = &id_back_msg[idx][col];
+
       }
-      // Update depth
-//      cout << "Update depth at " << row << " x " << col << endl;
-      switch (minimum_idx) {
-        case 1:
-          if (col > 0) {
-//            cout << "Choose prev depth" << endl;;
-            depth.at<double>(row, col) = depth.at<double>(row, col - 1);
-          }
-          break;
-        case 2:depth.at<double>(row, col) = random_depth;
-//          cout << "Choose random depth" << endl;
-          break;
-        default:break;
 
-      };
+      if (id_forward_msg.count(idx) <= 0) {
+        id_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+      }
+      if (id_forward_msg[idx].count(col) <= 0) {
+        id_forward_msg[idx].insert(make_pair(col, vector<double>()));
 
+      }
+      double prev = 0.5;
+      if (row - start_row >= 1) {
+        double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
+        prev = hmm->ComputeForwardMessage(row,
+                                          col,
+                                          end_row - 1,
+                                          em,
+                                          0.5,
+                                          id_forward_msg[idx][col].at(row - 1),
+                                          hmm->transition_prob_(0, 1));
+      }
+      id_forward_msg[idx][col].push_back(prev);
+
+      const double zn0 = (1.0 - prev) * (1.0f - (*BackMsg)[end_row - 1 - row]);
+      const double zn1 = prev * (*BackMsg)[end_row - 1 - row];
+      double q_l_m = zn1 / (zn0 + zn1);
+
+      all_frame_selection_prob.push_back(q_l_m);
+    } else if (rotate % 4 == 2) {
+      if (id_back_msg[idx].count(row) <= 0) {
+
+        vector<double> temp_BackMsg;
+        double later = 1;
+        for (int back_col = end_col + 1; back_col <= start_col; ++back_col) {
+          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, back_col));
+
+          later = hmm->ComputeBackwardMessage(row,
+                                              back_col,
+                                              start_col - 1,
+                                              em,
+                                              0.5,
+                                              later,
+                                              hmm->transition_prob_(0, 1));
+          temp_BackMsg.push_back(later);
+        }
+        id_back_msg[idx].insert(make_pair(row, temp_BackMsg));
+        BackMsg = &id_back_msg[idx][row];
+
+      }
+      if (id_forward_msg.count(idx) <= 0) {
+        id_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+      }
+      if (id_forward_msg[idx].count(row) <= 0) {
+        id_forward_msg[idx].insert(make_pair(row, vector<double>()));
+
+      }
+      double prev = 0.5;
+      if (start_col - col >= 1) {
+        double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
+        prev = hmm->ComputeForwardMessage(row,
+                                          col,
+                                          start_col - 1,
+                                          em,
+                                          0.5,
+                                          id_forward_msg[idx][row].at(col + 1),
+                                          hmm->transition_prob_(0, 1));
+      }
+      id_forward_msg[idx][row].push_back(prev);
+
+      const double zn0 = (1.0 - prev) * (1.0f - (*BackMsg)[start_col - col]);
+      const double zn1 = prev * (*BackMsg)[start_col - col];
+      double q_l_m = zn1 / (zn0 + zn1);
+
+      all_frame_selection_prob.push_back(q_l_m);
+    } else {
+      if (id_back_msg[idx].count(col) <= 0) {
+
+        vector<double> temp_BackMsg;
+        double later = 1;
+        for (int back_row = start_row + 1; back_row <= end_row; ++back_row) {
+          double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(back_row, col));
+
+          later = hmm->ComputeBackwardMessage(back_row,
+                                              col,
+                                              start_row - 1,
+                                              em,
+                                              0.5,
+                                              later,
+                                              hmm->transition_prob_(0, 1));
+          temp_BackMsg.push_back(later);
+        }
+        id_back_msg[idx].insert(make_pair(col, temp_BackMsg));
+        BackMsg = &id_back_msg[idx][col];
+
+      }
+      if (id_forward_msg.count(idx) <= 0) {
+        id_forward_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
+      }
+      if (id_forward_msg[idx].count(col) <= 0) {
+        id_forward_msg[idx].insert(make_pair(col, vector<double>()));
+
+      }
+      double prev = 0.5;
+      if (start_row - row >= 1) {
+        double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col));
+        prev = hmm->ComputeForwardMessage(row,
+                                          col,
+                                          start_row - 1,
+                                          em,
+                                          0.5,
+                                          id_forward_msg[idx][col].at(row + 1),
+                                          hmm->transition_prob_(0, 1));
+      }
+      id_forward_msg[idx][col].push_back(prev);
+
+      const double zn0 = (1.0 - prev) * (1.0f - (*BackMsg)[start_row - row]);
+      const double zn1 = prev * (*BackMsg)[start_row - row];
+      double q_l_m = zn1 / (zn0 + zn1);
+
+      all_frame_selection_prob.push_back(q_l_m);
     }
 
   }
-  ConvertToDepthMap();
+
+  // Create a new distribution.
+  // And then select the new subset to calculate the sum of ncc.
+  Sampling(all_frame_selection_prob);
+
+  //      for (size_t i = 0; i < all_frame_selection_prob.size(); i++) {
+  //        cout << all_frame_selection_prob[i] << ' ';
+  //      }
+  //      cout << endl;
+
+
+
+   int row_cal_depth = row, col_cal_depth = col;
+  switch (rotate % 4) {
+    case 0:
+      col_cal_depth = col_cal_depth > start_col ? col_cal_depth - 1 : col_cal_depth;
+      break;
+    case 1:row_cal_depth = row_cal_depth > 0 ? row_cal_depth - 1 : row_cal_depth;
+      break;
+    case 2:col_cal_depth = col_cal_depth < start_col ? col_cal_depth + 1 : col_cal_depth;
+      break;
+    case 3:row_cal_depth = row_cal_depth < start_row ? row_cal_depth + 1 : row_cal_depth;
+  }
+  double random_depth = rand_dist(gen);
+  for (int sample_idx = 0; sample_idx < 5; ++sample_idx) {
+    double random = uni_dist(gen) * 0.01;
+
+    for (int idx = 0; idx < frames.size(); idx++) {
+      const double prob = all_frame_selection_prob[idx];
+
+//           // If accept this frame, then sum the ncc value at different depth.
+//           // curr
+      if (prob > random) {
+        sum_of_ncc_diff_depth[0] += id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col);
+
+
+        sum_of_ncc_diff_depth[1] +=
+            ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, depth.at<double>(row_cal_depth, col_cal_depth), K_ref, K_src);
+
+        sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth, K_ref, K_src);
+        break;
+      }
+    }
+  }
+  double minimum = 9999;
+  int minimum_idx = 0;
+  for (int idx = 0; idx < 3; ++idx) {
+    if (minimum > sum_of_ncc_diff_depth[idx]) {
+      minimum_idx = idx;
+      minimum = sum_of_ncc_diff_depth[idx];
+    }
+  }
+  // Update depth
+//  cout << "Update depth at " << row << " x " << col << endl;
+  switch (minimum_idx) {
+    case 1:
+      if (col > 0) {
+//        cout << "Choose prev depth" << endl;;
+        depth.at<double>(row, col) = depth.at<double>(row_cal_depth, col_cal_depth);
+      }
+      break;
+    case 2:depth.at<double>(row, col) = random_depth;
+//      cout << "Choose random depth" << endl;
+      break;
+    default:break;
+
+  };
 }
 
 void Graph::Sampling(vector<double> &all_prob) {
@@ -496,43 +808,57 @@ void Graph::ConvertToDepthMap() {
 //  if (mean)
 
   stringstream ss;
-  ss << "depth-" << rotate << ".jpg";
+  ss << "depth-d" << depth_max << "-" << depth_min << "-r" << rotate << "-i" << iterations << ".jpg";
+  iterations++;
   cv::imwrite(ss.str(), map);
-  cv::imwrite("depth1.jpg", depth);
 
 }
 
 void Graph::Rotate() {
-  depth = depth.t();
-  int temp = ref_width_;
-  ref_width_ = ref_height_;
-  ref_height_ = temp;
-  int temp_row = start_row, temp_end_row = end_row;
-  start_row = start_col;
-  end_row = end_col;
-  start_col = temp_row;
-  end_col = temp_end_row;
-  auto it = id_to_NCC.begin();
-  while (it != id_to_NCC.end()) {
-    auto second_it = it->second.begin();
-    while (second_it != it->second.end()) {
-      cv::rotate(second_it->second, second_it->second, cv::ROTATE_90_CLOCKWISE);
-      second_it++;
-    }
-    it++;
+  switch (rotate % 4) {
+    case 0:
+      start_row = 0;
+      start_col = 0;
+      end_row = ref_height_;
+      end_col = ref_width_;
+    case 1:
+      start_row = 0;
+    start_col = 0;
+      end_row = ref_height_;
+      end_col = ref_width_;
+      break;
+    case 2:
+      start_row = 0;
+      end_row = ref_height_;
+      start_col = ref_width_ - 1;
+      end_col = -1;
+    case 3:
+      start_row = ref_height_ - 1;
+      end_row = -1;
+      start_col = 0;
+      end_col = ref_width_;
+      break;
+    default:break;
   }
-
-  for (const shared_ptr<Frame> &frame: frames) {
-    cv::rotate(frame->left_img_, frame->left_img_, cv::ROTATE_90_CLOCKWISE);
-  }
-  cv::rotate(ref_img_->left_img_, ref_img_->left_img_, cv::ROTATE_90_CLOCKWISE);
   rotate++;
 }
 
+
+ float ComputeNCCCostNormFactor(
+      const float ncc_sigma) {
+    // A = sqrt(2pi)*sigma/2*erf(sqrt(2)/sigma)
+    // erf(x) = 2/sqrt(pi) * integral from 0 to x of exp(-t^2) dt
+    return 2.0f / (sqrt(2.0f * 3.1415926) * ncc_sigma *
+                   erff(2.0f / (ncc_sigma * 1.414213562f)));
+  }
+
+
 double Graph::ComputeEmissionProb(double ncc) {
 
-  return exp(ncc * ncc * (-0.5 / (0.6 * 0.6))) * 0.6;
+  return exp(ncc * ncc * (-0.5 / (0.6 * 0.6))) * ComputeNCCCostNormFactor(0.6);
 
 }
+
+
 
 }

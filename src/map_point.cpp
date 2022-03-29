@@ -6,8 +6,7 @@
 
 namespace sslam{
 
-    MapPoint::MapPoint() {
+MapPoint::MapPoint() {
 
-    }
-
+}
 }

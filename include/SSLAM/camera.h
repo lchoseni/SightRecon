@@ -10,6 +10,7 @@
 namespace sslam {
     class Camera {
     public:
+      typedef shared_ptr<Camera> Ptr;
         double fx_, fy_, cx_, cy_;
         Sophus::SE3d pose_;
 
@@ -36,6 +37,14 @@ namespace sslam {
 
         Vec3 Pixel2World(const Vec2 &pixel, const Sophus::SE3d &T_c_w, double depth = 1);
 
+      //获取参数
+      float getFocalLength() {
+        return (fx_ + fy_) / 2;
+      }
+
+      cv::Point2d getPrincipalPoint() {
+        return cv::Point2d(cx_, cy_);
+      }
     };
 }
 

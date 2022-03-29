@@ -1,4 +1,6 @@
 %YAML:1.0
 
+# dataset_dir: /home/yeren/slambook2/ch7/
 dataset_dir: /home/yeren/self/
-source_type: 0
+num_features: 10000
+source_type: 1

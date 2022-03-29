@@ -8,36 +8,34 @@
 #include "camera.h"
 
 namespace sslam {
-    class FrontEnd {
-    public:
-        std::vector<Frame> frames_;
+class FrontEnd {
+ public:
+  std::vector<Frame> frames_;
 
-        cv::Ptr<cv::GFTTDetector> gftt_;
+  cv::Ptr<cv::GFTTDetector> gftt_;
 
-        std::shared_ptr<Camera> left_camera_, right_camera_;
+  std::shared_ptr<Camera> left_camera_, right_camera_;
 
-        FrontEnd(/* args */);
+  FrontEnd(/* args */);
 
-        ~FrontEnd();
+  ~FrontEnd();
 
-        /*
-         * Initilize system.
-         */
-        bool Initialize();
+  /*
+   * Initilize system.
+   */
+  bool Initialize();
 
-        bool AddFrame(Frame &frame);
+  bool AddFrame(shared_ptr<Frame> &frame);
 
-        bool DetectFeatures(shared_ptr<Frame> frame);
+  bool DetectFeatures(shared_ptr<Frame> frame);
 
-        int FindFeaturesInRight(shared_ptr<Frame> frame);
+  int FindFeaturesInRight(shared_ptr<Frame> frame);
 
+  bool InitMap();
 
-        bool InitMap();
-
-        bool Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, std::vector<Feature::Ptr> &pt2,
-                           std::vector<cv::Point3d> &points);
-    };
-
+  bool Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, std::vector<Feature::Ptr> &pt2,
+                     std::vector<cv::Point3d> &points);
+};
 
 }
 
