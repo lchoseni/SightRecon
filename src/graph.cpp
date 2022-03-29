@@ -74,7 +74,6 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
   cv::Ptr<cv::Feature2D> detector = cv::SIFT::create();
   cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("BruteForce");
 
-
   detector->compute(frame1->left_img_, frame1->left_key_points_, descriptors_1);
   detector->compute(frame2->left_img_, frame2->left_key_points_, descriptors_2);
 
@@ -156,7 +155,7 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
                       points4D) <= 0) {
     return false;
   }
-  if (inlinerMask.rows < 30){
+  if (inlinerMask.rows < 30) {
     return false;
   }
   R_ = R;
@@ -167,8 +166,6 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
 
   return true;
 }
-
-
 
 void Graph::ComputeAllRAndT() {
 
@@ -214,7 +211,7 @@ void Graph::ComputeAllRAndT() {
     cv::eigen2cv(ref_img_->C_c_w, C_i);
     cv::eigen2cv(qualified_frame->R_c_w, R_j);
     cv::eigen2cv(qualified_frame->C_c_w, C_j);
-        rela_rt.R_i = R_j;
+    rela_rt.R_i = R_j;
     rela_rt.C_i = C_i;
     rela_rt.R_j = R_j;
     rela_rt.C_j = C_j;
@@ -240,8 +237,14 @@ void Graph::ComputeAllRAndT() {
   }
 }
 
-
-double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int win_size, double depth_pix, cv::Mat K_src, cv::Mat K_ref) {
+double Graph::ComputeNCC(Frame &ref,
+                         Frame &src,
+                         int row_pix,
+                         int col_pix,
+                         int win_size,
+                         double depth_pix,
+                         cv::Mat K_src,
+                         cv::Mat K_ref) {
   double max_cost = 2.0;
   RELA_RT rela_rt = id_to_RTs_[ref.id_][src.id_];
   cv::Mat H(3, 3, CV_64F);
@@ -255,71 +258,58 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
 
   // Compute the image coordinate after homography warping.
   // If it's outside the boarder, ignore it and return the minimum NCC.
-  cv::Mat ref_coor = cv::Mat(3, 1, CV_64F);
-
-  ref_coor.at<double>(0, 0) = (double) col_pix;
-  ref_coor.at<double>(1, 0) = (double) row_pix;
-  ref_coor.at<double>(2, 0) = 1.0;
-  cv::Mat src_coor = H * ref_coor;
-//  cout << "ref coor is " << ref_coor.t() << endl << "src coor is" << src_coor.t() << endl;
-//  cout << depth_pix << " Converted by H is " <<   (id_to_H[ref.id_][src.id_] * ref_coor).t() << endl;;
-//  ref_coor.at<double>(0, 0) = (double) row_pix;
-//  ref_coor.at<double>(0, 1) = (double) col_pix;
-//  ref_coor.at<double>(0, 2) = 1.0;
-//
-//  src_coor = H * ref_coor;
-//  cout <<endl << endl<< "ref coor is " << ref_coor.t() << endl << "src coor is" << src_coor.t() << endl;
-//  cout << depth_pix << " Converted by H is " <<   (id_to_H[ref.id_][src.id_] * ref_coor).t() << endl;;
-
-  double src_col = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
-  double src_row = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
-  double ref_col = ref_coor.at<double>(1, 0) / ref_coor.at<double>(2, 0);
-  double ref_row = ref_coor.at<double>(0, 0) / ref_coor.at<double>(2, 0);
-
-  // Calculate the ncc value of the matched patch.
   int half_win = win_size / 2;
   int count = 0;
-  double sum_ref = 0.0, sum_src = 0.0, sum_sqre_ref = 0.0, sum_sqre_src = 0.0;
+  cv::Mat ref_coor = cv::Mat(3, 1, CV_64F);
+  double src_col, src_row, ref_col, ref_row;
+  double refs[win_size * win_size], srcs[win_size * win_size];
+  int idx = 0;
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
+
+      ref_coor.at<double>(0, 0) = (double) col_pix + win_col;
+      ref_coor.at<double>(1, 0) = (double) row_pix + win_row;
+      ref_coor.at<double>(2, 0) = 1.0;
+      cv::Mat src_coor = H * ref_coor;
+
+      src_col = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
+      src_row = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
+      ref_col = ref_coor.at<double>(0, 0) / ref_coor.at<double>(2, 0);
+      ref_row = ref_coor.at<double>(1, 0) / ref_coor.at<double>(2, 0);
       if ((src_row + win_row >= 0 && src_row + win_row <= ref_height_ && src_col + win_col >= 0
-          && src_col + win_col <= ref_width_)
-          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
-              && ref_col + win_col <= ref_width_)) {
-
-        count++;
-
-        sum_src += src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col);
-//        sum_sqre_src += pow(src.left_img_.at<uchar>(src_row + win_row, src_col + win_col), 2);
-
-        sum_ref += ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col);
-//        sum_sqre_ref += pow(ref.left_img_.at<uchar>(ref_row + win_row, ref_col + win_col), 2);
+          && src_col + win_col <= ref_width_)) {
+        srcs[idx] = src.left_img_.at<uchar>((int) src_row, (int) src_col);
+      } else {
+        srcs[idx] = 0.0;
       }
+
+      if (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
+          && ref_col + win_col <= ref_width_) {
+        refs[idx] = ref.left_img_.at<uchar>(row_pix + win_row, col_pix + win_col);
+
+      } else {
+        refs[idx] = 0.0;
+      }
+
+      idx++;
     }
   }
-  if (count < 15 && count >0){
-    out_bound_pix++;
-//    return max_cost;
+
+  double src_mean = 0, ref_mean = 0;
+  for (int i = 0; i < win_size * win_size; ++i) {
+    src_mean += srcs[i];
+    ref_mean += refs[i];
   }
 
+  src_mean /= win_size * win_size;
+  ref_mean /= win_size * win_size;
 
-  double ref_mean = sum_ref / count;
-  double src_mean = sum_src / count;
   double var = 0.0, var_ref = 0.0, var_src = 0.0;
-  for (int win_row = -half_win; win_row <= half_win; ++win_row) {
-    for (int win_col = -half_win; win_col <= half_win; ++win_col) {
+  for (int i = 0; i < win_size * win_size; ++i) {
+    var += (srcs[i] - src_mean) * (refs[i] - ref_mean);
 
-      if ((src_row + win_row >= 0 && src_row + win_row <= ref_height_ && src_col + win_col >= 0
-          && src_col + win_col <= ref_width_)
-          && (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
-              && ref_col + win_col <= ref_width_)) {
-        var += (src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col) - src_mean)
-            * (ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col) - ref_mean);
-
-        var_src += pow(src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col) - src_mean, 2);
-        var_ref += pow(ref.left_img_.at<uchar>((int) ref_row + win_row, (int) ref_col + win_col) - ref_mean, 2);
-      }
-    }
+    var_src += (srcs[i] - src_mean) * (srcs[i] - src_mean);
+    var_ref += (refs[i] - ref_mean) * (refs[i] - ref_mean);
   }
 
   double ncc = var / sqrt(var_src * var_ref);
@@ -333,15 +323,15 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
     cv::Mat b;
     cv::warpPerspective(ref.left_img_, a, H, cv::Size());
     cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
+    cv::imshow("ref", ref.left_img_);
     cv::imshow("after computed H", a);
     cv::imshow("real H", b);
     cv::imshow("src", src.left_img_);
     cv::waitKey(5);
   }
-  if (count)
-    if (var_ref < 1e-5 || var_src < 1e-5) {
-      return max_cost;
-    }
+  if (var_ref < 1e-5 || var_src < 1e-5) {
+    return max_cost;
+  }
   return max(0.0, min(max_cost, 1.0 - ncc));
 }
 
@@ -352,14 +342,15 @@ void Graph::ComputeHomography(const cv::Mat &K_src,
                               cv::Mat &H,
                               int row, int col) {
   double arr_n[3][1] = {{0}, {0}, {1.0}};
-  double arr_d[3][1] = {{1}, {1}, {depth_pix}};
-  double arr_p[3][1] = {{(double) col}, {(double) row}, {1}};
+//  double arr_d[3][1] = {{1}, {1}, {depth_pix}};
+//  double arr_p[3][1] = {{(double) col}, {(double) row}, {1}};
   cv::Mat n(3, 1, CV_64F, &arr_n);
-  cv::Mat d(3, 1, CV_64F, &arr_d);
-  cv::Mat p(3, 1, CV_64F, &arr_p);
-//  cv::Mat cal_H = K_src * (rt.R - rt.T * n.t() / depth_pix) * K_ref.inv();
-  cv::Mat cal_H = K_src * (rt.R_j * rt.R_i.t() +  rt.R_j * (rt.C_i - rt.C_j) * n.t() / (n.t() * depth_pix * K_ref.inv() * p)) * K_ref.inv();
-
+//  cv::Mat d(3, 1, CV_64F, &arr_d);
+//  cv::Mat p(3, 1, CV_64F, &arr_p);
+  cv::Mat cal_H = K_src * (rt.R_j * rt.R_i.t() - rt.R_j * (rt.C_i - rt.C_j) * n.t() / depth_pix) * K_ref.inv();
+//  cv::Mat cal_H =
+//      K_src * (rt.R_j * rt.R_i.t() + rt.R_j * (rt.C_i - rt.C_j) * n.t() / (n.t() * depth_pix * K_ref.inv() * p))
+//          * K_ref.inv();
 
   cal_H.copyTo(H);
 
@@ -370,7 +361,7 @@ void Graph::ComputeAllNCC(int win_size) {
   cv::eigen2cv(ref_img_->GetCamera()->K(), K_src);
   cv::eigen2cv(ref_img_->GetCamera()->K(), K_ref);
   for (int idx = 0; idx < frames.size(); idx++) {
-  out_bound_pix = 0;
+    out_bound_pix = 0;
 
     cout << "Pre-Compute all ncc at image" << frames[idx]->id_ << endl;
     for (int row = start_row; row < end_row; ++row) {
@@ -382,7 +373,7 @@ void Graph::ComputeAllNCC(int win_size) {
                                           row,
                                           col, win_size,
                                           depth.at<double>(row, col),
-                                              K_ref, K_src);
+                                          K_ref, K_src);
 
         if (id_to_NCC.count(ref_img_->id_) <= 0) {
           id_to_NCC.insert(make_pair(ref_img_->id_, map<unsigned int, cv::Mat>()));
@@ -538,7 +529,7 @@ void Graph::ComputeSelectionProb(int row,
                                               later,
                                               hmm->transition_prob_(0, 1));
           temp_BackMsg.push_back(later);
-          if (row == 0 && idx == 0){
+          if (row == 0 && idx == 0) {
 //            cout << "Back Message of row and col " << row << '\t' << back_col << " is " << later << endl;
           }
         }
@@ -727,10 +718,9 @@ void Graph::ComputeSelectionProb(int row,
 
 
 
-   int row_cal_depth = row, col_cal_depth = col;
+  int row_cal_depth = row, col_cal_depth = col;
   switch (rotate % 4) {
-    case 0:
-      col_cal_depth = col_cal_depth > start_col ? col_cal_depth - 1 : col_cal_depth;
+    case 0:col_cal_depth = col_cal_depth > start_col ? col_cal_depth - 1 : col_cal_depth;
       break;
     case 1:row_cal_depth = row_cal_depth > 0 ? row_cal_depth - 1 : row_cal_depth;
       break;
@@ -750,9 +740,15 @@ void Graph::ComputeSelectionProb(int row,
       if (prob > random) {
         sum_of_ncc_diff_depth[0] += id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col);
 
-
         sum_of_ncc_diff_depth[1] +=
-            ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, depth.at<double>(row_cal_depth, col_cal_depth), K_ref, K_src);
+            ComputeNCC(*ref_img_,
+                       *frames[idx],
+                       row,
+                       col,
+                       win_size,
+                       depth.at<double>(row_cal_depth, col_cal_depth),
+                       K_ref,
+                       K_src);
 
         sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth, K_ref, K_src);
         break;
@@ -816,24 +812,20 @@ void Graph::ConvertToDepthMap() {
 
 void Graph::Rotate() {
   switch (rotate % 4) {
-    case 0:
-      start_row = 0;
+    case 0:start_row = 0;
       start_col = 0;
       end_row = ref_height_;
       end_col = ref_width_;
-    case 1:
-      start_row = 0;
-    start_col = 0;
+    case 1:start_row = 0;
+      start_col = 0;
       end_row = ref_height_;
       end_col = ref_width_;
       break;
-    case 2:
-      start_row = 0;
+    case 2:start_row = 0;
       end_row = ref_height_;
       start_col = ref_width_ - 1;
       end_col = -1;
-    case 3:
-      start_row = ref_height_ - 1;
+    case 3:start_row = ref_height_ - 1;
       end_row = -1;
       start_col = 0;
       end_col = ref_width_;
@@ -843,22 +835,18 @@ void Graph::Rotate() {
   rotate++;
 }
 
-
- float ComputeNCCCostNormFactor(
-      const float ncc_sigma) {
-    // A = sqrt(2pi)*sigma/2*erf(sqrt(2)/sigma)
-    // erf(x) = 2/sqrt(pi) * integral from 0 to x of exp(-t^2) dt
-    return 2.0f / (sqrt(2.0f * 3.1415926) * ncc_sigma *
-                   erff(2.0f / (ncc_sigma * 1.414213562f)));
-  }
-
+float ComputeNCCCostNormFactor(
+    const float ncc_sigma) {
+  // A = sqrt(2pi)*sigma/2*erf(sqrt(2)/sigma)
+  // erf(x) = 2/sqrt(pi) * integral from 0 to x of exp(-t^2) dt
+  return 2.0f / (sqrt(2.0f * 3.1415926) * ncc_sigma *
+      erff(2.0f / (ncc_sigma * 1.414213562f)));
+}
 
 double Graph::ComputeEmissionProb(double ncc) {
 
   return exp(ncc * ncc * (-0.5 / (0.6 * 0.6))) * ComputeNCCCostNormFactor(0.6);
 
 }
-
-
 
 }

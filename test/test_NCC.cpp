@@ -24,7 +24,7 @@ int main() {
 //    graph.Rotate();
 //    graph.Rotate();
 
-  for (int i = 0; i < 8; ++i) {
+  for (int i = 0; i < 4; ++i) {
     graph.ComputeAllRAndT();
     graph.Propagate();
 //     graph.Rotate();

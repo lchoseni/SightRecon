@@ -11,7 +11,7 @@
 namespace sslam {
 
 Dataset::Dataset() : cur_img_index(0), dataset_dir(Config::Get<std::string>(Config::dataset_dir)) {
-  cur_img_index = 0;
+  cur_img_index = 5;
 }
 
 std::shared_ptr<Camera> Dataset::left_camera_ = nullptr;
