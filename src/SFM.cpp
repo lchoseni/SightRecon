@@ -366,15 +366,15 @@
 //            Mat descriptor = keyFrame2->descriptors.row(matches[i].trainIdx);
 //
 //            //如果是上一帧加到地图中的点，更新描述子、加入观测帧后跳过
-//            if (keyFrame1->inlierPoints.find(matches[i].queryIdx) != keyFrame1->inlierPoints.end()) {
-//                mapPoint = keyFrame1->inlierPoints[matches[i].queryIdx];
+//            if (keyFrame1->inlinePoints.find(matches[i].queryIdx) != keyFrame1->inlinePoints.end()) {
+//                mapPoint = keyFrame1->inlinePoints[matches[i].queryIdx];
 //                //更新描述子
 //                mapPoint->descriptor = descriptor;
 //                //加入观测帧
-//                mapPoint->addObervedFrame(
+//                mapPoint->addObservedFrame(
 //                        keyFrame2->frame, keyFrame2->keyPoints[matches[i].trainIdx].pt);
 //                //记录当前帧加入地图的mapPoint和特征点下标
-//                keyFrame2->inlierPoints[matches[i].trainIdx] = mapPoint;
+//                keyFrame2->inlinePoints[matches[i].trainIdx] = mapPoint;
 //
 //            } else {
 //
@@ -411,14 +411,14 @@
 //                }
 //
 //                //记录当前帧加入地图的mapPoint和特征点下标
-//                keyFrame2->inlierPoints[matches[i].trainIdx] = mapPoint;
+//                keyFrame2->inlinePoints[matches[i].trainIdx] = mapPoint;
 //
 ///*#ifdef DEBUG
 //            if (i < 5)
 //                cout << mapPoint->pos << endl << endl;
 //#endif*/
-//                mapPoint->addObervedFrame(keyFrame1->frame, keyFrame1->keyPoints[matches[i].queryIdx].pt);
-//                mapPoint->addObervedFrame(keyFrame2->frame, keyFrame2->keyPoints[matches[i].trainIdx].pt);
+//                mapPoint->addObservedFrame(keyFrame1->frame, keyFrame1->keyPoints[matches[i].queryIdx].pt);
+//                mapPoint->addObservedFrame(keyFrame2->frame, keyFrame2->keyPoints[matches[i].trainIdx].pt);
 //                map->addMapPoint(mapPoint);
 //                //加入到小地图
 //                localMap->addMapPoint(mapPoint);

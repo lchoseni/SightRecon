@@ -43,7 +43,14 @@ namespace sslam {
       }
 
       cv::Point2d getPrincipalPoint() {
-        return cv::Point2d(cx_, cy_);
+        return {cx_, cy_};
+      }
+
+      cv::Point2d pixel2normal(const cv::Point2f &p) const{
+        return {
+                (p.x - cx_) / fx_,
+                (p.y - cy_) / fy_
+            };
       }
     };
 }

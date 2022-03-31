@@ -11,7 +11,7 @@
 namespace sslam {
 
 Dataset::Dataset() : cur_img_index(0), dataset_dir(Config::Get<std::string>(Config::dataset_dir)) {
-  cur_img_index = 5;
+  cur_img_index = 0;
 }
 
 std::shared_ptr<Camera> Dataset::left_camera_ = nullptr;
@@ -35,7 +35,7 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
     return nullptr;
   }
 //  cur_img_index += 4;
-  if (cur_img_index >11) {
+  if (cur_img_index > 11) {
     return nullptr;
   }
 
@@ -46,8 +46,8 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
 //    cout << left.rows << ", " << left.cols << endl;
 //    cv::imshow("s", left);
 //    cv::waitKey(0);
-  cv::resize(left, resized_left, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
-  cv::resize(right, resized_right, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
+  cv::resize(left, resized_left, cv::Size(), 1, 1, cv::INTER_NEAREST);
+  cv::resize(right, resized_right, cv::Size(), 1, 0.25, cv::INTER_NEAREST);
 
 //  cv::imwrite((data_fmt % dataset_dir % cur_img_index).str().c_str(), resized_left);
   cout << (ext_m_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
@@ -110,7 +110,7 @@ bool Dataset::GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3,
     std::shared_ptr<Vec3> t(new Vec3());
     *t << projection_data[3], projection_data[7], projection_data[11];
 //           *t = K->inverse() * *t;
-    *K = *K * 0.25;
+    *K = *K * 1;
     Ks.push_back(K);
     ts.push_back(t);
   }

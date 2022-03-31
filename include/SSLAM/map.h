@@ -35,7 +35,9 @@ class GMap {
       mapPoints.push_back(mapPoint);
   }
 
-//  void visInCloudViewer();
+
+
+  void visInCloudViewer();
 };
     
 

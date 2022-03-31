@@ -32,6 +32,11 @@ message("Sophus ${Sophus_INCLUDE_DIRS} ${Sophus_LIBRARIES}")
 find_package(Eigen3 )
 include_directories(${EIGEN3_INCLUDE_DIRS})
 
+find_package(PCL REQUIRED COMPONENTS common io visualization)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
@@ -43,6 +48,8 @@ set(THIRD_PARTY_LIBS
         ${Boost_LIBRARIES}
         opencv_cvv
         opencv_xfeatures2d
+        ${PCL_LIBRARIES}
+
         )
 
 add_subdirectory(src)

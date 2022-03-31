@@ -13,10 +13,10 @@ class Hmm {
 
   Hmm(Eigen::Matrix<double, 2, 2> transition_prob);
 
-  double ComputeForwardMessage(int row, int col, int width, double z1_emission, double z0_emission, double later0,
+  double ComputeForwardMessage(int row, int col, double z1_emission, double z0_emission, double later0,
                                double tran_0_1);
 
-  double ComputeBackwardMessage(int row, int col, int width, double z1_emission, double z0_emission, double later0,
+  double ComputeBackwardMessage(int row, int col, double z1_emission, double z0_emission, double later0,
                                 double tran_0_1);
 };
 

@@ -18,7 +18,7 @@ typedef struct {
   cv::Mat R;
   cv::Mat T;
   cv::Mat points4D;
-  cv::Mat inlinerMask;
+  cv::Mat inlineMask;
   vector<cv::DMatch> matches;
   cv::Mat R_i, C_i, R_j, C_j;
 } RELA_RT;
@@ -41,7 +41,14 @@ class Graph {
   int start_row, end_row, start_col, end_col;
   int rotate = 0;
   int iterations = 0;
+  bool pose_in_dataset;
+  bool simple;
   shared_ptr<GMap> g_map_;
+
+  Frame::Ptr key_frame_1_;
+  Frame::Ptr key_frame_2_;
+
+  bool init = true;
 
  public:
 
@@ -59,7 +66,7 @@ class Graph {
                              vector<cv::DMatch> &matches_);
   void ComputeAllRAndT();
   double ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int win_size, double depth_pix,  cv::Mat K_src, cv::Mat K_ref);
-  void AddMapPoints(shared_ptr<Frame> &frame1, shared_ptr<Frame> &frame2, RELA_RT &rt);
+  void AddMapPoint(Frame::Ptr &frame1, Frame::Ptr &frame2, RELA_RT &rt);
 
   void InitialRandomDepth();
   void ComputeHomography(const cv::Mat &K_src,
@@ -73,12 +80,17 @@ class Graph {
   void ComputeSelectionProb(int row,
                             int col,
                             map<unsigned int, map<unsigned int, vector<double>>> &id_back_msg,
-                            map<unsigned int, map<unsigned int, vector<double>>> &id_forward_msg, int win_size);
+                            map<unsigned int, map<unsigned int, vector<double>>> &id_forward_msg, int win_size,
+                            cv::Mat K_ref, const cv::Mat& K_src);
   void Sampling(vector<double> &all_prob);
   double ComputeEmissionProb(double ncc);
   void UpdateRowCol(int &row, int &col);
   void ConvertToDepthMap();
   void Rotate();
+
+
+  void AddMapPoint(RELA_RT rt);
+
   ~Graph();
 };
 

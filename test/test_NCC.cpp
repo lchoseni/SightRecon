@@ -24,10 +24,10 @@ int main() {
 //    graph.Rotate();
 //    graph.Rotate();
 
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 6; ++i) {
     graph.ComputeAllRAndT();
     graph.Propagate();
-//     graph.Rotate();
+     graph.Rotate();
   }
 //   cv::Mat r1 = (cv::Mat_<double>(3,  3) << 0.962742, -0.0160548, -0.269944 ,
 // -0.270399, -0.0444283, -0.961723 ,

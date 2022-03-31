@@ -45,7 +45,7 @@ class MapPoint {
     pos(2) = posMatx13(2);
   }
 
-  void addObervedFrame(const shared_ptr<Frame> &observedFrame, const cv::Point2d &pixelCoor) {
+  void addObservedFrame(const shared_ptr<Frame> &observedFrame, const cv::Point2d &pixelCoor) {
     if (observedFrame)
       observedFrames.push_back(
           std::pair<shared_ptr<Frame>, cv::Point2d>(observedFrame, pixelCoor));
