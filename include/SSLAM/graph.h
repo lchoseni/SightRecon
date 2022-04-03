@@ -38,7 +38,7 @@ class Graph {
   int ref_width_, ref_height_;
   double depth_max, depth_min;
   Hmm *hmm;
-  int start_row, end_row, start_col, end_col;
+  int start_row, end_row, start_col, end_col, init_start_row, init_end_row, init_start_col, init_end_col;
   int rotate = 0;
   int iterations = 0;
   bool pose_in_dataset;
@@ -49,6 +49,7 @@ class Graph {
   Frame::Ptr key_frame_2_;
 
   bool init = true;
+  bool apply_ba = false;
 
  public:
 
@@ -71,10 +72,11 @@ class Graph {
   void InitialRandomDepth();
   void ComputeHomography(const cv::Mat &K_src,
                          const cv::Mat &K_ref,
-                         RELA_RT rt,
+                         cv::Mat &src_R, cv::Mat &src_T,
                          double &depth,
                          cv::Mat &H,
-                         int row, int col);
+                         int row, int col,
+                         double normal[3]);
   void ComputeAllNCC(int win_size);
   void Propagate();
   void ComputeSelectionProb(int row,

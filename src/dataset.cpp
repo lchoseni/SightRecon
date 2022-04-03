@@ -28,6 +28,8 @@ Dataset::~Dataset() {
  */
 shared_ptr<Frame> Dataset::GetNextFrame() {
   boost::format data_fmt("%simages/%04d.jpg");
+  boost::format scale_fmt("%simages/scale/%04d.jpg");
+
   boost::format ext_m_fmt("%sgt_dense_cameras/%04d.jpg.camera");
   cv::Mat left, right;
   cout << (data_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
@@ -35,7 +37,7 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
     return nullptr;
   }
 //  cur_img_index += 4;
-  if (cur_img_index > 11) {
+  if (cur_img_index >9) {
     return nullptr;
   }
 
@@ -47,10 +49,14 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
 //    cv::imshow("s", left);
 //    cv::waitKey(0);
   cv::resize(left, resized_left, cv::Size(), 1, 1, cv::INTER_NEAREST);
-  cv::resize(right, resized_right, cv::Size(), 1, 0.25, cv::INTER_NEAREST);
+  cv::resize(right, resized_right, cv::Size(), 1, 1, cv::INTER_NEAREST);
 
 //  cv::imwrite((data_fmt % dataset_dir % cur_img_index).str().c_str(), resized_left);
   cout << (ext_m_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
+//  stringstream  ss;
+//  ss << (scale_fmt % dataset_dir % cur_img_index);
+//  cv::imwrite(ss.str(), resized_left);
+
 
   std::ifstream fin((ext_m_fmt % dataset_dir % cur_img_index).str());
   if (!fin) {

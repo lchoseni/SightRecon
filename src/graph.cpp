@@ -26,20 +26,23 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   ref_height_ = ref_img_->left_img_.rows;
   ref_width_ = ref_img_->left_img_.cols;
   depth = cv::Mat(ref_height_, ref_width_, CV_64F);
-  depth_max = 1000;
-  depth_min = 0;
+  depth_max = 0.5;
+  depth_min = 4.5;
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
+
 //  start_row = 500, end_row = 600, start_col = 500, end_col = 600;
 //    start_row = 500, end_row = 1500, start_col = 500, end_col = 1500;
-//  start_row = 500, end_row = 1000, start_col = 1200, end_col = 1700;
-  start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
+  start_row = 1300, end_row = 1700, start_col = 500, end_col = 2000;
+//  start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
+  init_start_row = start_row, init_end_row = end_row, init_start_col = start_col, init_end_col = end_col;
   cout << ref_img->left_img_.rows << " x " << ref_img->left_img_.cols << endl;
   rotate = 0;
   g_map_ = std::make_shared<GMap>();
   pose_in_dataset = false;
   simple = true;
+  apply_ba = true;
   cout << "K is " << ref_img->GetCamera()->K() << endl;
 }
 
@@ -124,6 +127,7 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
   if (pts1.size() < 8 || pts2.size() < 8) {
     return false;
   }
+  id_to_H[frame1->id_][frame2->id_] = cv::findHomography(pts1, pts2, RANSAC, 3);
 
   cv::Mat K1, K2;
 
@@ -145,7 +149,6 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
     if (id_to_H[frame1->id_].count(frame2->id_) <= 0) {
       id_to_H[frame1->id_].insert(make_pair(frame2->id_, cv::Mat()));
     }
-    id_to_H[frame1->id_][frame2->id_] = cv::findHomography(pts1, pts2, RANSAC, 3);
 
     cv::Mat R, t;
     if (cv::recoverPose(ess, pts1, pts2, K1, R, t, 100, inlineMask,
@@ -160,7 +163,7 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1,
     points4D.copyTo(points4D_);
     inlineMask.copyTo(inlinerMask_);
     matches_ = good_matches;
-    init = false;
+    init = !apply_ba;
 
     Eigen::Matrix3d eigenR2;
     cv2eigen(R, eigenR2);
@@ -360,11 +363,11 @@ void Graph::ComputeAllRAndT() {
     cv::eigen2cv(ref_img_->C_c_w, C_i);
     cv::eigen2cv(qualified_frame->R_c_w, R_j);
     cv::eigen2cv(qualified_frame->C_c_w, C_j);
-    rela_rt.R_i = R_j;
+    rela_rt.R_i = R_i;
     rela_rt.C_i = C_i;
     rela_rt.R_j = R_j;
     rela_rt.C_j = C_j;
-
+    cout << R_j << R_i <<endl;
     rela_rt.R = R;
     rela_rt.T = t;
     rela_rt.points4D = points4D;
@@ -380,12 +383,16 @@ void Graph::ComputeAllRAndT() {
 
     AddMapPoint(ref_img_, qualified_frame, rela_rt);
     g_map_->addFrame(qualified_frame);
+    if(apply_ba) {
+      BA ba;
+      ba(g_map_);
+    }
 
-    BA ba;
-    ba(g_map_);
   }
 
-  g_map_->visInCloudViewer();
+  if (apply_ba) {
+    //g_map_->visInCloudViewer();
+  }
 }
 
 double Graph::ComputeNCC(Frame &ref,
@@ -400,36 +407,41 @@ double Graph::ComputeNCC(Frame &ref,
   RELA_RT rela_rt = id_to_RTs_[ref.id_][src.id_];
   cv::Mat H(3, 3, CV_64F);
   double depths[14] = {0.1, 0.2, 0.5, 0.9, 1, 2, 5, 10, 20, 100, 500, 1000, 10000, 100000};
-  if (row_pix == 100 && col_pix == 100){
-    for (int i = 0; i < 14; ++i) {
-      ComputeHomography(K_src,
-                        K_ref,
-                        rela_rt,
-                        depths[i],
-                        H, row_pix, col_pix);
-      std::stringstream ss;
+  double normals[5][3] = {{1, 1, 1,}, {1, -1, 1}, {-1, 1, 1}, {-1, -1, 1}, {0, 0, 1}};
+//  if (row_pix == 100 && col_pix == 100){
+//    for (int i = 0; i < 14; ++i) {
+//
+//        ComputeHomography(K_src,
+//                          K_ref,
+//                          rela_rt,
+//                          depths[i],
+//                          H, row_pix, col_pix, normals[4]);
+//        std::stringstream ss;
+//
+//        ss << "after computed H+++-" << depths[i] <<  "-to-" << src.id_ << ".jpg";
+//
+//        cv::Mat a;
+//
+//        cv::warpPerspective(ref.left_img_, a, H, cv::Size());
+//        cv::imwrite(ss.str(), a);
+//
+//    }
+//    std::stringstream ss1;
+//    cv::Mat b;
+//    ss1 << "read H " << "to-" << src.id_ << ".jpg";
+//    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
+//    cv::imwrite(ss1.str(), b);
+//  }
 
-      ss << "after computed H-" << depths[i] <<"-to-" << src.id_ << ".jpg";
-
-      cv::Mat a;
-
-      cv::warpPerspective(ref.left_img_, a, H, cv::Size());
-      cv::imwrite(ss.str(), a);
-
-    }
-    std::stringstream ss1;
-    cv::Mat b;
-    ss1 << "read H " << "to-" << src.id_ << ".jpg";
-    cv::warpPerspective(ref.left_img_, b, id_to_H[ref_img_->id_][src.id_], cv::Size());
-    cv::imwrite(ss1.str(), b);
-  }
-
-
+  double normal[3] = {0, 0, 1};
+  cv::Mat R, T;
+  cv::eigen2cv(src.Tcw.rotationMatrix(), R);
+  cv::eigen2cv(src.Tcw.translation(), T);
   ComputeHomography(K_src,
                     K_ref,
-                    rela_rt,
+                    rela_rt.R, rela_rt.T,
                     depth_pix,
-                    H, row_pix, col_pix);
+                    H, row_pix, col_pix, normal);
 
 
   // Compute the image coordinate after homography warping.
@@ -442,12 +454,10 @@ double Graph::ComputeNCC(Frame &ref,
   ref_coor.at<double>(0, 0) = (double) col_pix;
   ref_coor.at<double>(1, 0) = (double) row_pix;
   ref_coor.at<double>(2, 0) = 1.0;
-  cv::Mat src_coor = H * ref_coor;
 
-  src_col = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
-  src_row = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
-  ref_col = ref_coor.at<double>(0, 0) / ref_coor.at<double>(2, 0);
-  ref_row = ref_coor.at<double>(1, 0) / ref_coor.at<double>(2, 0);
+      cv::Mat src_coor = H  * ref_coor;
+      src_col = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
+      src_row = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
   for (int win_row = -half_win; win_row <= half_win; ++win_row) {
     for (int win_col = -half_win; win_col <= half_win; ++win_col) {
 
@@ -458,8 +468,8 @@ double Graph::ComputeNCC(Frame &ref,
         srcs[idx] = 0.0;
       }
 
-      if (ref_row + win_row >= 0 && ref_row + win_row <= ref_height_ && ref_col + win_col >= 0
-          && ref_col + win_col <= ref_width_) {
+      if (row_pix + win_row >= 0 && row_pix + win_row <= ref_height_ && col_pix + win_col >= 0
+          && col_pix + win_col <= ref_width_) {
         refs[idx] = ref.left_img_.at<uchar>(row_pix + win_row, col_pix + win_col);
 
       } else {
@@ -489,11 +499,8 @@ double Graph::ComputeNCC(Frame &ref,
 
   double ncc = var / sqrt(var_src * var_ref);
 
-  if (row_pix == 80 && col_pix == 80) {
-    cv::Mat sd = id_to_H[ref_img_->id_][src.id_] * ref_coor;
-    sd /= sd.at<double>(0, 2);
-//    cout << ref_coor.t() << " " << (src_coor / src_coor.at<double>(0, 2)).t() << " " << endl;
-//    cout << "col " << col_pix << " ncc " << ncc << endl;
+  if (row_pix == (start_row + end_row) / 2 && col_pix == (start_col + end_col) / 2) {
+
     cv::Mat a;
     cv::Mat b;
     cv::warpPerspective(ref.left_img_, a, H, cv::Size());
@@ -512,23 +519,29 @@ double Graph::ComputeNCC(Frame &ref,
 
 void Graph::ComputeHomography(const cv::Mat &K_src,
                               const cv::Mat &K_ref,
-                              RELA_RT rt,
+                              cv::Mat &src_R, cv::Mat &src_T,
                               double &depth_pix,
                               cv::Mat &H,
-                              int row, int col) {
-//  double arr_n[3][1] = {{0}, {0}, {1.0}};
-  double arr_n[3][1] = {{0.1}, {0.1}, {1.0}};
+                              int row, int col,
+                              double normal[3]) {
+  double arr_n[3][1] = {{normal[0]}, {normal[1]}, {normal[2]}};
   double arr_d[3][1] = {{1}, {1}, {depth_pix}};
   double arr_p[3][1] = {{(double) col}, {(double) row}, {1}};
-  cv::Mat n(3, 1, CV_64F, &arr_n);
+  cv::Mat n(3, 1, CV_64F, arr_n);
   cv::Mat d(3, 1, CV_64F, &arr_d);
   cv::Mat p(3, 1, CV_64F, &arr_p);
 //  cv::Mat cal_H = K_src * (rt.R_j * rt.R_i.t() - rt.R_j * (rt.C_i - rt.C_j) * n.t() / depth_pix) * K_ref.inv();
 //  cv::Mat cal_H = K_src * (rt.R  - rt.T * n.t() / depth_pix) * K_ref.inv();
-  cv::Mat cal_H = pose_in_dataset ?
-      K_src * (rt.R_j * rt.R_i.inv() + rt.R_j * (rt.C_i - rt.C_j) * n.t() / (n.t() * depth_pix * K_ref.inv() * p))
-          * K_ref.inv() : K_src * (rt.R  - rt.T * n.t() / depth_pix) * K_ref.inv();
+//cout << n << d << p << endl;
+//  cv::Mat cal_H = pose_in_dataset ?
+//      K_src * (rt.R_i * rt.R_j.inv() + rt.R_i * (rt.C_j - rt.C_i) * n.t() / (n.t() * depth_pix * K_ref.inv() * p))
+//          * K_ref.inv() : K_src * (rt.R  + rt.T * n.t() / depth_pix) * K_ref.inv() ;
+  ::Mat cal_H = K_src * (src_R  + src_T * n.t() / depth_pix) * K_ref.inv() ;
 
+
+//  cout << (rt.R_j * (rt.C_i - rt.C_j) * n.t()).size() << (n.t() * depth_pix * K_ref.inv() * p).size() << endl;
+//  cout << ((rt.R_j * (rt.C_i - rt.C_j) * n.t())/ (n.t() * depth_pix * K_ref.inv() * p)).size() << endl;
+//  cout << "========"<< "R_j is " << endl << rt.R_j <<endl << "R_i is " << rt.R_i <<endl << rt.R_j * rt.R_i.inv() << endl;
   cal_H.copyTo(H);
 
 }
@@ -1011,23 +1024,23 @@ void Graph::ConvertToDepthMap() {
 
 void Graph::Rotate() {
   switch (rotate % 4) {
-    case 0:start_row = 0;
-      start_col = 0;
-      end_row = ref_height_;
-      end_col = ref_width_;
-    case 1:start_row = 0;
-      start_col = 0;
-      end_row = ref_height_;
-      end_col = ref_width_;
+    case 0:start_row = init_start_row;
+      start_col = init_start_col;
+      end_row = init_end_row;
+      end_col = init_end_col;
+    case 1:start_row = init_start_row;
+      start_col = init_start_col;
+      end_row = init_end_row;
+      end_col = init_end_col;
       break;
-    case 2:start_row = 0;
-      end_row = ref_height_;
-      start_col = ref_width_ - 1;
-      end_col = -1;
-    case 3:start_row = ref_height_ - 1;
-      end_row = -1;
-      start_col = 0;
-      end_col = ref_width_;
+    case 2:start_row = init_start_row;
+      end_row = init_end_row;
+      start_col = init_end_col - 1;
+      end_col = init_start_col - 1;
+    case 3:start_row = init_end_row - 1;
+      end_row = init_start_row - 1;
+      start_col = init_start_col;
+      end_col = init_end_col;
       break;
     default:break;
   }

@@ -24,6 +24,12 @@ int main() {
 //    graph.Rotate();
 //    graph.Rotate();
 
+
+  cv::Mat a = (cv::Mat_<double>(3, 3) << 1, 2, 3, 1, 0, 1, 0, 0, 1);
+  cv::Mat b = (cv::Mat_<double>(3, 1) << 0, 0, 1);
+
+  cout << a * b;
+
   for (int i = 0; i < 6; ++i) {
     graph.ComputeAllRAndT();
     graph.Propagate();
