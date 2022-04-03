@@ -26,15 +26,16 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   ref_height_ = ref_img_->left_img_.rows;
   ref_width_ = ref_img_->left_img_.cols;
   depth = cv::Mat(ref_height_, ref_width_, CV_64F);
-  depth_max = 0.5;
-  depth_min = 4.5;
+  depth_max = 0;
+  depth_min = 8;
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
 
 //  start_row = 500, end_row = 600, start_col = 500, end_col = 600;
 //    start_row = 500, end_row = 1500, start_col = 500, end_col = 1500;
-  start_row = 1300, end_row = 1700, start_col = 500, end_col = 2000;
+  start_row = 1600, end_row = 1900, start_col = 400, end_col = ref_width_- 800;//
+//  start_row = 1800, end_row = 2000, start_col = 1000, end_col = 1500;//
 //  start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
   init_start_row = start_row, init_end_row = end_row, init_start_col = start_col, init_end_col = end_col;
   cout << ref_img->left_img_.rows << " x " << ref_img->left_img_.cols << endl;
@@ -367,7 +368,7 @@ void Graph::ComputeAllRAndT() {
     rela_rt.C_i = C_i;
     rela_rt.R_j = R_j;
     rela_rt.C_j = C_j;
-    cout << R_j << R_i <<endl;
+//    cout << R_j << R_i <<endl;
     rela_rt.R = R;
     rela_rt.T = t;
     rela_rt.points4D = points4D;
@@ -393,6 +394,8 @@ void Graph::ComputeAllRAndT() {
   if (apply_ba) {
     //g_map_->visInCloudViewer();
   }
+
+  cout << "========ref img R and T is=========" << endl << ref_img_->Tcw.rotationMatrix() << endl << ref_img_->Tcw.translation() << endl;
 }
 
 double Graph::ComputeNCC(Frame &ref,
@@ -439,7 +442,7 @@ double Graph::ComputeNCC(Frame &ref,
   cv::eigen2cv(src.Tcw.translation(), T);
   ComputeHomography(K_src,
                     K_ref,
-                    rela_rt.R, rela_rt.T,
+                    R, T,
                     depth_pix,
                     H, row_pix, col_pix, normal);
 
@@ -455,15 +458,18 @@ double Graph::ComputeNCC(Frame &ref,
   ref_coor.at<double>(1, 0) = (double) row_pix;
   ref_coor.at<double>(2, 0) = 1.0;
 
+
+  for (int win_row = -half_win; win_row <= half_win; ++win_row) {
+    for (int win_col = -half_win; win_col <= half_win; ++win_col) {
+      ref_coor.at<double>(0, 0) = (double) (col_pix + win_col);
+      ref_coor.at<double>(1, 0) = (double) (row_pix + win_row);
+      ref_coor.at<double>(2, 0) = 1.0;
       cv::Mat src_coor = H  * ref_coor;
       src_col = src_coor.at<double>(0, 0) / src_coor.at<double>(2, 0);
       src_row = src_coor.at<double>(1, 0) / src_coor.at<double>(2, 0);
-  for (int win_row = -half_win; win_row <= half_win; ++win_row) {
-    for (int win_col = -half_win; win_col <= half_win; ++win_col) {
-
       if ((src_row + win_row >= 0 && src_row + win_row <= ref_height_ && src_col + win_col >= 0
           && src_col + win_col <= ref_width_)) {
-        srcs[idx] = src.left_img_.at<uchar>((int) src_row + win_row, (int) src_col + win_col);
+        srcs[idx] = src.left_img_.at<uchar>((int) src_row , (int) src_col);
       } else {
         srcs[idx] = 0.0;
       }
@@ -550,6 +556,7 @@ void Graph::ComputeAllNCC(int win_size) {
   cv::Mat H(3, 3, CV_64F), K_ref(3, 3, CV_64F), K_src(3, 3, CV_64F);
   cv::eigen2cv(ref_img_->GetCamera()->K(), K_src);
   cv::eigen2cv(ref_img_->GetCamera()->K(), K_ref);
+  double one_minus_ncc;
   for (int idx = 0; idx < frames.size(); idx++) {
     out_bound_pix = 0;
 
@@ -558,7 +565,7 @@ void Graph::ComputeAllNCC(int win_size) {
 
 //    cout << "Pre-Compute all ncc at row " << row << endl;
       for (int col = start_col; col < end_col; ++col) {
-        double one_minus_ncc = ComputeNCC(*ref_img_,
+        one_minus_ncc = ComputeNCC(*ref_img_,
                                           *frames[idx],
                                           row,
                                           col, win_size,
@@ -567,10 +574,7 @@ void Graph::ComputeAllNCC(int win_size) {
 
         if (id_to_NCC.count(ref_img_->id_) <= 0) {
           id_to_NCC.insert(make_pair(ref_img_->id_, map<unsigned int, cv::Mat>()));
-          cv::Mat src_m = cv::Mat(ref_height_, ref_width_, CV_64F);
-          src_m.at<double>(row, col) = one_minus_ncc;
-          id_to_NCC[ref_img_->id_].insert(make_pair(frames[idx]->id_, src_m));
-        } else {
+        }
           if (id_to_NCC[ref_img_->id_].count(frames[idx]->id_) <= 0) {
             cv::Mat src_m = cv::Mat(ref_height_, ref_width_, CV_64F);
             src_m.at<double>(row, col) = one_minus_ncc;
@@ -578,7 +582,7 @@ void Graph::ComputeAllNCC(int win_size) {
           } else {
             id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(row, col) = one_minus_ncc;
           }
-        }
+
       }
     }
     cout << "pixel partly counted is " << out_bound_pix << endl;
@@ -604,7 +608,7 @@ void Graph::UpdateRowCol(int &row, int &col) {
 }
 
 void Graph::Propagate() {
-  int win_size = 5;
+  int win_size = 7;
   ComputeAllNCC(win_size);
   cv::Mat K_ref(3, 3, CV_64F), K_src(3, 3, CV_64F);
   cv::eigen2cv(ref_img_->GetCamera()->K(), K_src);
@@ -811,7 +815,7 @@ void Graph::ComputeSelectionProb(int row,
                                             col,
                                             em,
                                             0.5,
-                                            id_forward_msg[idx][row].at(col - 1),
+                                            id_forward_msg[idx][row].at(col  - start_col - 1),
                                             hmm->transition_prob_(0, 1));
         }
         id_forward_msg[idx][row].push_back(prev);
@@ -841,7 +845,7 @@ void Graph::ComputeSelectionProb(int row,
                                             col,
                                             em,
                                             0.5,
-                                            id_forward_msg[idx][col].at(row - 1),
+                                            id_forward_msg[idx][col].at(row - start_row - 1),
                                             hmm->transition_prob_(0, 1));
         }
         id_forward_msg[idx][col].push_back(prev);
@@ -932,7 +936,7 @@ void Graph::ComputeSelectionProb(int row,
     case 3:row_cal_depth = row_cal_depth < start_row ? row_cal_depth + 1 : row_cal_depth;
   }
   double random_depth = rand_dist(gen);
-  for (int sample_idx = 0; sample_idx < 5; ++sample_idx) {
+  for (int sample_idx = 0; sample_idx < 6; ++sample_idx) {
     double random = uni_dist(gen) * 0.01;
 
     for (int idx = 0; idx < frames.size(); idx++) {
@@ -959,7 +963,9 @@ void Graph::ComputeSelectionProb(int row,
                        K_src);
 
         sum_of_ncc_diff_depth[2] += ComputeNCC(*ref_img_, *frames[idx], row, col, win_size, random_depth, K_ref, K_src);
-//        break;
+        if (!simple) {
+          break;
+        }
       }
     }
     if(simple) {
