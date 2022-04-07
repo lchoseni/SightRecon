@@ -23,7 +23,7 @@ class Frame {
   // id of current frame
   unsigned int id_;
   std::shared_ptr<sslam::Camera> cam_;
-  Sophus::SE3d Tcw;
+  SE3 Tcw;
   Eigen::Matrix<double, 3, 3> R_c_w;
   Eigen::Matrix<double, 3, 1> C_c_w;
   std::vector<Feature> features_;

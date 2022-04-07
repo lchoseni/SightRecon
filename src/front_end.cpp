@@ -106,12 +106,12 @@ bool FrontEnd::Initialize() {
 bool FrontEnd::Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, std::vector<Feature::Ptr> &pt2,
                              std::vector<cv::Point3d> &points) {
 
-  cv::Mat T1 = (cv::Mat_<float>(3, 4) <<
+  cv::Mat T1 = (cv::Mat_<double>(3, 4) <<
                                       1, 0, 0, 0,
       0, 1, 0, 0,
       0, 0, 1, 0);
 
-  cv::Mat T2 = (cv::Mat_<float>(3, 4) <<
+  cv::Mat T2 = (cv::Mat_<double>(3, 4) <<
                                       1, 0, 0, T.translation()(0, 0),
       0, 1, 0, T.translation()(1, 0),
       0, 0, 1, T.translation()(2, 0));
@@ -128,11 +128,11 @@ bool FrontEnd::Triangulation(Sophus::SE3d &T, std::vector<Feature::Ptr> &pt1, st
 
   for (int i = 0; i < pts_4d.cols; i++) {
     cv::Mat x = pts_4d.col(i);
-    x /= x.at<float>(3, 0); // normalization
+    x /= x.at<double>(3, 0); // normalization
     cv::Point3d p(
-        x.at<float>(0, 0),
-        x.at<float>(1, 0),
-        x.at<float>(2, 0)
+        x.at<double>(0, 0),
+        x.at<double>(1, 0),
+        x.at<double>(2, 0)
     );
     points.push_back(p);
   }

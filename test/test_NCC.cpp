@@ -20,10 +20,12 @@ int main() {
   int src_id = 0;
 //  hmm.ComputeBackwardMessage()
   graph.InitialRandomDepth();
-
+  cv::Mat K;
+  cv::eigen2cv(graph.ref_img_->cam_->K(), K);
+  graph.InitialRandomNormal(K);
 
     graph.ComputeAllRAndT();
-  for (int i = 0; i < 6; ++i) {
+  for (int i = 0; i < 12; ++i) {
     graph.Propagate();
      graph.Rotate();
   }

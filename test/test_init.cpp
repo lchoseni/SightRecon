@@ -9,9 +9,9 @@
 #include "SSLAM/frame.h"
 
 
-cv::Scalar get_color(float depth) {
+cv::Scalar get_color(double depth) {
     depth = depth * 300;
-  float up_th = 50, low_th = 10, th_range = up_th - low_th;
+  double up_th = 50, low_th = 10, th_range = up_th - low_th;
   if (depth > up_th) depth = up_th;
   if (depth < low_th) depth = low_th;
   return cv::Scalar(255 * depth / th_range, 0, 255 * (1 - depth / th_range));
@@ -37,7 +37,7 @@ int main(){
     for (size_t i = 0; i < frame->matches.size(); ++i){
         if (frame->right_features_.at(i) == nullptr) continue;
         std::vector<std::shared_ptr<sslam::Feature>> match = frame->matches.at(i);
-        float depth1 = pts[i].z;
+        double depth1 = pts[i].z;
         cv::circle(img1, match[0].get()->key_point_.pt, 2, get_color(depth1), 2);
 
         cv::Mat p2_trans = (cv::Mat_<double>(3, 3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)
@@ -47,7 +47,7 @@ int main(){
                    , front_end.right_camera_.get()->pose_.translation()(1, 0)
                    , front_end.right_camera_.get()->pose_.translation()(2, 0));
 
-        float depth2 = p2_trans.at<double>(2, 0);
+        double depth2 = p2_trans.at<double>(2, 0);
         cv::circle(img2, match[1].get()->key_point_.pt, 2, get_color(depth2), 2);
 
     }

@@ -12,9 +12,9 @@ namespace sslam {
     public:
       typedef shared_ptr<Camera> Ptr;
         double fx_, fy_, cx_, cy_;
-        Sophus::SE3d pose_;
+      SE3 pose_;
 
-        Camera(double fx, double fy, double cx, double cy, Sophus::SE3d pose);
+        Camera(double fx, double fy, double cx, double cy, SE3 pose);
         ~Camera();
 
         Mat33 K() const {
@@ -23,22 +23,22 @@ namespace sslam {
             return k;
         }
 
-        Vec3 World2Camera(const Vec3 &world, const Sophus::SE3d &T_w_c);
+        Vec3 World2Camera(const Vec3 &world, const SE3 &T_w_c);
 
         Vec2 Camera3d2Camera2d(const Vec3 &camera);
 
         Vec2 Camera2Pixel(const Vec3 &camera);
 
-        Vec2 World2Pixel(const Vec3 &world, const Sophus::SE3d &T_w_c);
+        Vec2 World2Pixel(const Vec3 &world, const SE3 &T_w_c);
 
         Vec3 Pixel2Camera(const Vec2 &pixel, double depth = 1);
 
-        Vec3 Camera2World(const Vec3 &camera, const Sophus::SE3d &T_c_w);
+        Vec3 Camera2World(const Vec3 &camera, const SE3 &T_c_w);
 
-        Vec3 Pixel2World(const Vec2 &pixel, const Sophus::SE3d &T_c_w, double depth = 1);
+        Vec3 Pixel2World(const Vec2 &pixel, const SE3 &T_c_w, double depth = 1);
 
       //获取参数
-      float getFocalLength() {
+      double getFocalLength() {
         return (fx_ + fy_) / 2;
       }
 

@@ -34,6 +34,7 @@ class Graph {
   map<unsigned int, map<unsigned int, SE3>> id_to_trans;
 
   cv::Mat depth;
+  cv::Mat normals;
   Dataset *dataset_;
   int ref_width_, ref_height_;
   double depth_max, depth_min;
@@ -43,7 +44,19 @@ class Graph {
   int iterations = 0;
   bool pose_in_dataset;
   bool simple;
+
+  std::mt19937 theta_gen;
+  std::mt19937 pie_gen;
+  std::mt19937 gen;
+  uniform_real_distribution<double> rand_theta_dist;
+  uniform_real_distribution<double> rand_pie_dist;
+  uniform_real_distribution<double> perturb_theta_dist;
+  uniform_real_distribution<double> perturb_pie_dist;
+
+
+
   shared_ptr<GMap> g_map_;
+  double ref_inv_K[4];
 
   Frame::Ptr key_frame_1_;
   Frame::Ptr key_frame_2_;
@@ -66,14 +79,27 @@ class Graph {
                              cv::Mat &inlinerMask_,
                              vector<cv::DMatch> &matches_);
   void ComputeAllRAndT();
-  double ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int win_size, double depth_pix,  cv::Mat K_src, cv::Mat K_ref);
+  double ComputeNCC(Frame &ref,
+                    Frame &src,
+                    int row_pix,
+                    int col_pix,
+                    int win_size,
+                    double depth_pix,
+                    double normal[3],
+                    cv::Mat K_src, cv::Mat K_ref);
   void AddMapPoint(Frame::Ptr &frame1, Frame::Ptr &frame2, RELA_RT &rt);
+
+
+  void InitialRandomNormal(const cv::Mat& K);
+  void GenerateRandomNormal(double *rand_normal);
+  void PerturbNormal(double normal[3]);
+
 
   void InitialRandomDepth();
   void ComputeHomography(const cv::Mat &K_src,
                          const cv::Mat &K_ref,
                          cv::Mat &src_R, cv::Mat &src_T,
-                         double &depth,
+                         double &depth_pix,
                          cv::Mat &H,
                          int row, int col,
                          double normal[3]);

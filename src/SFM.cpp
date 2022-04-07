@@ -58,7 +58,7 @@
 //        //输出点云信息
 ///*#ifdef DEBUG
 //        for (auto &mapPoints:map->mapPoints) {
-//            cout << "MapPoint " << mapPoints->getPosPoint3_CV<float>() << endl;
+//            cout << "MapPoint " << mapPoints->getPosPoint3_CV<double>() << endl;
 //            cout << " has " << mapPoints->observedFrames.size() << " oberved frames" << endl;
 //        }
 //#endif*/
@@ -111,7 +111,7 @@
 //#ifdef DEBUG
 //        int nPointsFindEssentialMat = countNonZero(inlierMask);
 //        cout << "findEssentialMat: \n\t" << nPointsFindEssentialMat << " valid points, " <<
-//             (float) nPointsFindEssentialMat * 100 / matchPoints1.size()
+//             (double) nPointsFindEssentialMat * 100 / matchPoints1.size()
 //             << "% of " << matchPoints1.size() << " points are used" << endl;
 //#endif
 //        //可视化用于三角化的点
@@ -149,7 +149,7 @@
 //#ifdef DEBUG
 //        int nPointsRecoverPose = countNonZero(inlierMask);
 //        cout << "recoverPose: \n\t" << nPointsRecoverPose << " valid points, " <<
-//             (float) nPointsRecoverPose * 100 / matchPoints1.size()
+//             (double) nPointsRecoverPose * 100 / matchPoints1.size()
 //             << "% of " << matchPoints1.size() << " points are used" << endl;
 ///*        cout << "2D-2D frame2 R: " << R.size << endl << R << endl;
 //        cout << "2D-2D frame2 t: " << t.size << endl << t << endl;
@@ -208,7 +208,7 @@
 //        vector<Point3f> points3D;
 //        for (MapPoint::Ptr &point:map->mapPoints) {
 //            if (keyFrame1->frame->isInFrame(point->pos, )) {
-//                points3D.push_back(point->getPosPoint3_CV<float>());
+//                points3D.push_back(point->getPosPoint3_CV<double>());
 //                descriptorsMap.push_back(point->descriptor);
 //            }
 //        }
@@ -272,7 +272,7 @@
 //
 //#ifdef DEBUG
 //        cout << "solvePnPRansac: \n\t" << indexInliers.rows << " valid points, " <<
-//             (float) indexInliers.rows * 100 / points2DPnP.size()
+//             (double) indexInliers.rows * 100 / points2DPnP.size()
 //             << "% of " << points2DPnP.size() << " points are used" << endl;
 ///*        cout << "2D-2D frame2 R: " << R.size << endl << R << endl;
 //        cout << "2D-2D frame2 t: " << t.size << endl << t << endl;
@@ -281,7 +281,7 @@
 //        cout << "2D-2D frame2 ProjMat: " << endl << keyFrame2->frame->getTcw34MatCV() << endl << endl;*/
 //#endif
 //
-//        if ((float) indexInliers.rows < 30) {
+//        if ((double) indexInliers.rows < 30) {
 //            cout << "current frame has bad matched points!" << endl;
 //            return;
 //        }
@@ -307,7 +307,7 @@
 //#ifdef DEBUG
 //        int nPointsFindEssentialMat = countNonZero(inlierMask);
 //        cout << "findEssentialMat: \n\t" << nPointsFindEssentialMat << " valid points, " <<
-//             (float) nPointsFindEssentialMat * 100 / matchPoints1.size()
+//             (double) nPointsFindEssentialMat * 100 / matchPoints1.size()
 //             << "% of " << matchPoints1.size() << " points are used" << endl;
 //#endif
 //
@@ -394,11 +394,11 @@
 //                }
 //
 //
-//                if (x.type() == CV_32FC1) {
-//                    x /= x.at<float>(3, 0); // 归一化
-//                    mapPoint = MapPoint::Ptr(new MapPoint(Vector3d(x.at<float>(0, 0),
-//                                                                   x.at<float>(1, 0),
-//                                                                   x.at<float>(2, 0)),
+//                if (x.type() == CV_64FC1) {
+//                    x /= x.at<double>(3, 0); // 归一化
+//                    mapPoint = MapPoint::Ptr(new MapPoint(Vector3d(x.at<double>(0, 0),
+//                                                                   x.at<double>(1, 0),
+//                                                                   x.at<double>(2, 0)),
 //                                                          descriptor, rgb
 //                    ));
 //                } else if (x.type() == CV_64FC1) {
