@@ -28,12 +28,11 @@ class Graph {
   map<unsigned int, map<unsigned int, RELA_RT>> id_to_RTs_;
   map<unsigned int, map<unsigned int, cv::Mat>> id_to_NCC;
   map<unsigned int, map<unsigned int, cv::Mat>> id_to_H;
-  vector<shared_ptr<Frame>> frames;
-  vector<shared_ptr<Frame>> readed_frames;
+
   int out_bound_pix = 0;
   map<unsigned int, map<unsigned int, SE3>> id_to_trans;
 
-  cv::Mat depth;
+  cv::Mat mask;
   cv::Mat normals;
   Dataset *dataset_;
   int ref_width_, ref_height_;
@@ -44,6 +43,8 @@ class Graph {
   int iterations = 0;
   bool pose_in_dataset;
   bool simple;
+  double ncc_norm_factor_;
+  int ref_img_idx_;
 
   std::mt19937 theta_gen;
   std::mt19937 pie_gen;
@@ -65,7 +66,10 @@ class Graph {
   bool apply_ba = false;
 
  public:
+  cv::Mat depth;
 
+  vector<shared_ptr<Frame>> frames;
+  vector<shared_ptr<Frame>> readed_frames;
   Graph(Dataset *dataset, shared_ptr<Frame> ref_img);
   shared_ptr<FrontEnd> front_end_;
   shared_ptr<Frame> ref_img_;

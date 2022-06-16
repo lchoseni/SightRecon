@@ -26,16 +26,17 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   ref_height_ = ref_img_->left_img_.rows;
   ref_width_ = ref_img_->left_img_.cols;
   depth = cv::Mat(ref_height_, ref_width_, CV_64F);
+  mask = cv::Mat(ref_height_, ref_width_, CV_64F);
   int di[3] = {ref_height_, ref_width_, 3};
   normals = cv::Mat(3, di, CV_64F, cv::Scalar(0));
-  depth_max = 10;
+  depth_max = 15;
   depth_min = 0;
   Eigen::Matrix<double, 2, 2> tran_prob;
   tran_prob << 0.999, 0.001, 0.001, 0.999;
   hmm = new Hmm(tran_prob);
 
 
-//  start_row = 400, end_row = ref_height_, start_col = 0, end_col = ref_width_;
+  // start_row = 225, end_row = 250, start_col = 0, end_col = ref_width_;
   start_row = 0, end_row = ref_height_, start_col = 0, end_col = ref_width_;
   init_start_row = start_row, init_end_row = end_row, init_start_col = start_col, init_end_col = end_col;
   cout << ref_img->left_img_.rows << " x " << ref_img->left_img_.cols << endl;
@@ -44,6 +45,10 @@ Graph::Graph(Dataset *dataset, shared_ptr<Frame> ref_img) : dataset_(dataset), r
   pose_in_dataset = false;
   simple = false;
   apply_ba = false;
+
+  ncc_norm_factor_ = 2.0 / (sqrt(2.0 * 3.1415926) * 0.6 *
+      erf(2.0 / (0.6 * 1.414213562)));
+  ncc_norm_factor_ = 1;
 
   std::random_device theta_rd;
   std::random_device pie_rd;
@@ -76,6 +81,7 @@ void Graph::InitialRandomDepth() {
   for (int row = 0; row < ref_height_; row++) {
     for (int col = 0; col < ref_width_; ++col) {
       depth.at<double>(row, col) = (double) uni_dist(gen);
+      mask.at<double>(row, col) = 0;
     }
   }
 }
@@ -395,15 +401,8 @@ void Graph::AddMapPoint(Frame::Ptr &frame1, Frame::Ptr &frame2, RELA_RT &rt) {
 void Graph::ComputeAllRAndT() {
 
   shared_ptr<Frame> frame = nullptr;
-  while ((frame = dataset_->GetNextFrame()) != nullptr) {
-    if (ref_img_ == nullptr) {
-      ref_img_ = frame;
-      continue;
-    } else {
-
+  while ((frame = dataset_->GetNextFrame(-1)) != nullptr) {
       readed_frames.push_back(frame);
-    }
-
   }
   frames.clear();
   g_map_->addFrame(ref_img_);
@@ -418,15 +417,6 @@ void Graph::ComputeAllRAndT() {
     }
     frames.push_back(qualified_frame);
 
-//    if (id_to_trans.count(ref_img_->id_) == 0){
-//      id_to_trans.insert(make_pair(ref_img_->id_, map<unsigned int, SE3>()));
-//    }
-//    if (id_to_trans[ref_img_->id_].count(frame->id_) == 0){
-//      ref_img_->Tcw.inverse().;
-//      auto rotation = ref_img_->Tcw.inverse() * frame->Tcw;
-//
-//      id_to_trans[ref_img_->id_].insert(make_pair(frame->id_, ref_img_->Tcw.matrix().inverse() * frame->Tcw.matrix()));
-//    }
 
 
     cout << "R and t is " << R / R.at<double>(2, 2) << endl << t << endl;
@@ -618,10 +608,10 @@ void Graph::ComputeAllNCC(int win_size) {
     out_bound_pix = 0;
 
     cout << "Pre-Compute all ncc at image" << frames[idx]->id_ << endl;
-    for (int row = start_row; row < end_row; ++row) {
+    for (int row = init_start_row; row < init_end_row; ++row) {
 
 //    cout << "Pre-Compute all ncc at row " << row << endl;
-      for (int col = start_col; col < end_col; ++col) {
+      for (int col = init_start_col; col < init_end_col; ++col) {
         normal[0] = normals.at<double>(row, col, 0);
         normal[1] = normals.at<double>(row, col, 1);
         normal[2] = normals.at<double>(row, col, 2);
@@ -794,7 +784,7 @@ void Graph::Propagate() {
             vector<double> temp_BackMsg;
             double later = 1;
             temp_BackMsg.push_back(later);
-            for (int back_row = start_row + 2; back_row <= end_row; ++back_row) {
+            for (int back_row = end_row + 2; back_row <= start_row; ++back_row) {
               double em = ComputeEmissionProb(id_to_NCC[ref_img_->id_][frames[idx]->id_].at<double>(back_row, col));
 
               later = hmm->ComputeBackwardMessage(back_row,
@@ -953,11 +943,26 @@ void Graph::ComputeSelectionProb(int row,
       }
 
     }
+    int count = 0;
+    double min_prob = ComputeEmissionProb(1 - 0.2);
+    for (double prob: all_frame_selection_prob) {
+      if (prob > min_prob){
+        count++;
+      }
+    }
+    if (count <= 2){
+      mask.at<double>(row, col) = 1;
+    } else {
+      mask.at<double>(row, col) = 0;
+    }
 
     // Create a new distribution.
     // And then select the new subset to calculate the sum of ncc.
     Sampling(all_frame_selection_prob);
   }
+
+
+
 
   int row_cal_depth = row, col_cal_depth = col;
   switch (rotate % 4) {
@@ -981,7 +986,7 @@ void Graph::ComputeSelectionProb(int row,
   perturb_cur_normal[2] = normals.at<double>(row_cal_depth, col_cal_depth, 2);
   PerturbNormal(perturb_cur_normal);
 
-  for (int sample_idx = 0; sample_idx < 6; ++sample_idx) {
+  for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
     double random = uni_dist(gen) * 0.01;
 
     for (int idx = 0; idx < frames.size(); idx++) {
@@ -1048,9 +1053,22 @@ void Graph::Sampling(vector<double> &all_prob) {
     sum += prob;
   }
 
-  for (int idx = 0; idx < all_prob.size(); ++idx) {
-    all_prob[idx] /= sum;
+  double cum_prob = 0.0;
+  for (double & idx : all_prob) {
+    const double prob = idx  / sum;
+    cum_prob += prob;
+    idx = cum_prob;
   }
+
+
+//  const float inv_prob_sum = 1.0f / prob_sum;
+//
+//  float cum_prob = 0.0f;
+//  for (int i = 0; i < num_probs; ++i) {
+//    const float prob = probs[i] * inv_prob_sum;
+//    cum_prob += prob;
+//    probs[i] = cum_prob;
+//  }
 }
 
 void Graph::ConvertToDepthMap() {
@@ -1060,16 +1078,47 @@ void Graph::ConvertToDepthMap() {
   depth.copyTo(map);
   cv::minMaxLoc(map, &min, &max);
   map /= max;
+  cv::imshow("mask1", map);
+
   map *= 255;
+
+  for (int row = 0; row < ref_height_; ++row) {
+    for (int col = 0; col < ref_width_; ++col) {
+      if(mask.at<double>(row, col) == 1){
+        map.at<double>(row, col) = 0;
+      }
+    }
+  }
+
+  cv::imshow("mask", mask);
+  cv::waitKey(1);
+
+
   // map.convertTo(map, CV_16U);
 
 
 
-  stringstream ss;
+  stringstream ss, output;
   ss << "depth-d" << depth_max << "-" << depth_min << "-r" << rotate << "-i" << iterations
-     << (pose_in_dataset ? "-pd" : "-pc") << (simple ? "-nohmm" : "-hmm") << ".jpg";
+     << (pose_in_dataset ? "-pd" : "-pc") << (simple ? "-nohmm" : "-hmm") << "-" << ref_img_->id_ << ".jpg";
+  output << "depth-d" << depth_max << "-" << depth_min << "-r" << rotate << "-i" << iterations
+             << (pose_in_dataset ? "-pd" : "-pc") << (simple ? "-nohmm" : "-hmm") << "-" << ref_img_->id_ << ".txt";
   iterations++;
   cv::imwrite(ss.str(), map);
+
+  ofstream os;
+  os.open(output.str());
+  for (int row = 0; row < ref_height_; ++row) {
+    for (int col = 0; col < ref_width_; ++col) {
+      if(mask.at<double>(row, col) == 1){
+        os << 0 << " ";
+      } else {
+        os << to_string(depth.at<double>(row, col)) << " ";
+      }
+    }
+    os << "\n";
+  }
+  os.close();
 
 }
 
@@ -1104,13 +1153,13 @@ double ComputeNCCCostNormFactor(
     const double ncc_sigma) {
   // A = sqrt(2pi)*sigma/2*erf(sqrt(2)/sigma)
   // erf(x) = 2/sqrt(pi) * integral from 0 to x of exp(-t^2) dt
-  return 2.0 / (sqrt(2.0 * 3.1415926) * ncc_sigma *
-      erf(2.0 / (ncc_sigma * 1.414213562f)));
+  return 2.0 / (sqrt(2.0 * 3.1415926) * 0.6 *
+      erf(2.0 / (0.6 * 1.414213562)));
 }
 
 double Graph::ComputeEmissionProb(double ncc) {
 
-  return exp(ncc * ncc * (-0.5 / (0.6 * 0.6))) ;
+  return exp(ncc * ncc * (-0.5 / (0.6 * 0.6))) * ncc_norm_factor_ ;
 
 }
 

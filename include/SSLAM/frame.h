@@ -19,7 +19,7 @@ class Frame {
  public:
   typedef shared_ptr<Frame> Ptr;
   // index for all frames, it indicates next frame id.
-  static int global_index_;
+  // static int global_index_;
   // id of current frame
   unsigned int id_;
   std::shared_ptr<sslam::Camera> cam_;
@@ -27,6 +27,8 @@ class Frame {
   Eigen::Matrix<double, 3, 3> R_c_w;
   Eigen::Matrix<double, 3, 1> C_c_w;
   std::vector<Feature> features_;
+  cv::Mat depth;
+  cv::Mat mask;
 
   cv::Mat left_img_, right_img_;
   std::vector<cv::KeyPoint> left_key_points_;
@@ -40,7 +42,7 @@ class Frame {
   // Key point matches between left img and right img.
   std::vector<std::vector<std::shared_ptr<Feature>>> matches;
 
-  Frame();
+  Frame(int id);
 
   void SetCamera(std::shared_ptr<Camera> &sharedPtr);
 

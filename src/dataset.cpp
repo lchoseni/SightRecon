@@ -12,7 +12,10 @@ namespace sslam {
 
 Dataset::Dataset() : cur_img_index(0), dataset_dir(Config::Get<std::string>(Config::dataset_dir)) {
   cur_img_index = 0;
+  ref_img_index = -1;
 }
+
+double Dataset::scale = 1;
 
 std::shared_ptr<Camera> Dataset::left_camera_ = nullptr;
 std::shared_ptr<Camera> Dataset::right_camera_ = nullptr;
@@ -26,28 +29,45 @@ Dataset::~Dataset() {
  *
  * @return sslam::Frame
  */
-shared_ptr<Frame> Dataset::GetNextFrame() {
+shared_ptr<Frame> Dataset::GetNextFrame(int idx) {
+
+  if (cur_img_index == ref_img_index) {
+    cur_img_index++;
+  }
+
   boost::format data_fmt("%simages/%04d.jpg");
   boost::format scale_fmt("%simages/scale/%04d.jpg");
 
   boost::format ext_m_fmt("%sgt_dense_cameras/%04d.jpg.camera");
   cv::Mat left, right;
-  if (access((data_fmt % dataset_dir % cur_img_index).str().c_str(), F_OK) == -1) {
-    return nullptr;
-  }
-  cout << (data_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
-//  cur_img_index += 4;
-  if (cur_img_index >9) {
-    return nullptr;
-  }
 
-  left = cv::imread((data_fmt % dataset_dir % cur_img_index).str(), CV_LOAD_IMAGE_GRAYSCALE);
-  right = cv::imread((data_fmt % dataset_dir % cur_img_index).str(), CV_LOAD_IMAGE_GRAYSCALE);
+  if (idx != -1) {
+    ref_img_index = idx;
+    if (access((data_fmt % dataset_dir % idx).str().c_str(), F_OK) == -1) {
+      return nullptr;
+    }
+    cout << (data_fmt % dataset_dir % idx).str().c_str() << endl;
+    left = cv::imread((data_fmt % dataset_dir % idx).str(), CV_LOAD_IMAGE_GRAYSCALE);
+    right = cv::imread((data_fmt % dataset_dir % idx).str(), CV_LOAD_IMAGE_GRAYSCALE);
+
+  } else {
+    if (access((data_fmt % dataset_dir % cur_img_index).str().c_str(), F_OK) == -1) {
+      return nullptr;
+    }
+    cout << (data_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
+    left = cv::imread((data_fmt % dataset_dir % cur_img_index).str(), CV_LOAD_IMAGE_GRAYSCALE);
+    right = cv::imread((data_fmt % dataset_dir % cur_img_index).str(), CV_LOAD_IMAGE_GRAYSCALE);
+
+  }
+//  cur_img_index += 4;
+  if (cur_img_index > 9) {
+    return nullptr;
+  }
 
   cv::Mat resized_left, resized_right;
 
-  cv::resize(left, resized_left, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
-  cv::resize(right, resized_right, cv::Size(), 0.25, 0.25, cv::INTER_NEAREST);
+  cv::resize(left, resized_left, cv::Size(), scale, scale, cv::INTER_NEAREST);
+  cv::resize(right, resized_right, cv::Size(), scale, scale, cv::INTER_NEAREST);
 
 //  cv::imwrite((data_fmt % dataset_dir % cur_img_index).str().c_str(), resized_left);
 //  cout << (ext_m_fmt % dataset_dir % cur_img_index).str().c_str() << endl;
@@ -55,36 +75,48 @@ shared_ptr<Frame> Dataset::GetNextFrame() {
 //  ss << (scale_fmt % dataset_dir % cur_img_index);
 //  cv::imwrite(ss.str(), resized_left);
 
+  std::ifstream fin;
+  if (idx != -1){
+    fin = std::ifstream ((ext_m_fmt % dataset_dir % idx).str());
+  } else {
+    fin = std::ifstream ((ext_m_fmt % dataset_dir % cur_img_index).str());
+  }
+  if (!fin) {
+    return nullptr;
+  }
 
- std::ifstream fin((ext_m_fmt % dataset_dir % cur_img_index).str());
- if (!fin) {
-   return nullptr;
- }
+  double projection_data[12];
+  for (double & k : projection_data) {
 
- double projection_data[12];
- for (int k = 0; k < 12; ++k) {
+    fin >> k;
+  }
+  for (double & k : projection_data) {
 
-   fin >> projection_data[k];
- }
- for (int k = 0; k < 12; ++k) {
+    fin >> k;
+  }
+  fin.close();
+  Eigen::Matrix<double, 3, 3> R;
+  R << projection_data[0], projection_data[1], projection_data[2],
+      projection_data[3], projection_data[4], projection_data[5],
+      projection_data[6], projection_data[7], projection_data[8];
+  Vec3 t;
+  t << projection_data[9], projection_data[10], projection_data[11];
 
-   fin >> projection_data[k];
- }
- Eigen::Matrix<double, 3, 3> R;
- R << projection_data[0], projection_data[1], projection_data[2],
-     projection_data[3], projection_data[4], projection_data[5],
-     projection_data[6], projection_data[7], projection_data[8];
- Vec3 t;
- t << projection_data[9], projection_data[10], projection_data[11];
-
-  Frame *new_frame = new Frame();
+  Frame *new_frame;
+  if(idx != -1) {
+     new_frame = new Frame(idx);
+  } else{
+    new_frame = new Frame(cur_img_index);
+  }
   new_frame->left_img_ = resized_left;
   new_frame->right_img_ = resized_right;
   new_frame->SetCamera(left_camera_);
 //  new_frame->Tcw = SE3(*K, *t);
- new_frame->R_c_w = R;
- new_frame->C_c_w = t;
-  cur_img_index++;
+  new_frame->R_c_w = R;
+  new_frame->C_c_w = t;
+  if (idx == -1) {
+    cur_img_index++;
+  }
   return shared_ptr<Frame>(new_frame);
 }
 
@@ -114,14 +146,13 @@ bool Dataset::GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3,
     std::shared_ptr<Vec3> t(new Vec3());
     *t << projection_data[3], projection_data[7], projection_data[11];
 //           *t = K->inverse() * *t;
-    *K = *K * 0.25;
+    *K = *K * scale;
     Ks.push_back(K);
     ts.push_back(t);
   }
   fin.close();
   return true;
 }
-
 std::shared_ptr<Camera> Dataset::GetCamera(int id) {
   if (left_camera_ == nullptr) {
     std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> Ks;

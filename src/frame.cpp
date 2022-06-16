@@ -1,9 +1,8 @@
 #include "SSLAM/frame.h"
 
 namespace sslam {
-int Frame::global_index_ = -1;
 
-Frame::Frame() : id_(GetNextIndex()) {
+Frame::Frame(int id): id_(id) {
 }
 
 //    Frame::~Frame() {
@@ -11,9 +10,6 @@ Frame::Frame() : id_(GetNextIndex()) {
 //    }
 
 
-unsigned int Frame::GetNextIndex() {
-  return ++global_index_;
-}
 
 bool Frame::SetLeftKP(std::vector<cv::KeyPoint> &kps) {
   left_key_points_ = kps;

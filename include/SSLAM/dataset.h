@@ -11,18 +11,18 @@
 
 namespace sslam {
     class Dataset {
-    private:
+    public:
         int cur_img_index;
-
+        int ref_img_index;
+        static double scale;
         const std::string dataset_dir;
         static std::shared_ptr<Camera> left_camera_, right_camera_;
 
-    public:
         Dataset();
 
         ~Dataset();
 
-        shared_ptr<Frame> GetNextFrame();
+      virtual shared_ptr<Frame> GetNextFrame(int idx);
 
         static bool GetCameraPara(std::vector<std::shared_ptr<Eigen::Matrix<double, 3, 3>>> &Ks,
                                   std::vector<std::shared_ptr< Vec3>> &ts);
