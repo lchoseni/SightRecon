@@ -1,9 +1,15 @@
 add_executable(test_init test_init.cpp)
 add_executable(test_decompose_E test_decompose_E.cpp)
 add_executable(test_NCC test_NCC.cpp)
+add_executable(test_orb test_orb.cpp)
+add_executable(learn_detector learn_fast.cpp)
+add_executable(learn_detector_self learn_fast_self.cpp generate_cpp_self.cpp)
+add_test( test_orb test_orb )
 
-
-target_link_libraries(test_init sslam fmt::fmt)
+target_link_libraries(test_init sslam fmt::fmt )
 target_link_libraries(test_decompose_E  sslam fmt::fmt)
 target_link_libraries(test_NCC  sslam fmt::fmt)
+target_link_libraries(test_orb  sslam fmt::fmt gtest  Threads::Threads)
+target_link_libraries(learn_detector  ${THIRD_PARTY_LIBS})
+target_link_libraries(learn_detector_self  ${THIRD_PARTY_LIBS})
 

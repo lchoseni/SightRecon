@@ -13,8 +13,10 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/eigen.hpp>
+#include <iostream>
 
 using namespace std;
+
 
 
 typedef Eigen::Matrix<double, 2, 1> Vec2;

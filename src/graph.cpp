@@ -68,7 +68,7 @@ bool Graph::ComputeRAndTOfTwoImgs(shared_ptr<Frame> &frame1, shared_ptr<Frame> &
                                 [](const cv::DMatch &m1, const cv::DMatch &m2) { return m1.distance < m2.distance; });
 
   double min_dist = min_max.first->distance;
-  double max_dist = min_max.second->distance;
+  // double max_dist = min_max.second->distance;
 
   std::vector<cv::DMatch> good_matches;
   for (int i = 0; i < descriptors_1.rows; i++) {
@@ -162,7 +162,7 @@ double Graph::ComputeNCC(Frame &ref, Frame &src, int row_pix, int col_pix, int w
                     H);
   // Compute the image coordinate after homography warping.
   // If it's outside the boarder, ignore it and return the minimum NCC.
-  double ref_coor_homo[3][1] = {{(double)row_pix}, {(double)col_pix}, {1.0}};
+  // double ref_coor_homo[3][1] = {{(double)row_pix}, {(double)col_pix}, {1.0}};
   cv::Mat ref_coor = cv::Mat(3, 1, CV_64F);
 //  cout << ref_coor<< " " << K_ref << " " << K_src<<endl;
 
@@ -221,7 +221,7 @@ void Graph::ComputeHomography(const cv::Mat &K_src,
 }
 
 void Graph::ComputeAllNCC(int win_size) {
-  for (int idx = 0; idx < frames.size(); idx++) {
+  for (size_t idx = 0; idx < frames.size(); idx++) {
 
     cout << "Compute all ncc at image" << frames[idx]->id_ << endl;
     for (int row = start_row; row < end_row; ++row) {
@@ -287,7 +287,7 @@ void Graph::Propagate() {
       // The last one is a random depth.
 
       double sum_of_ncc_diff_depth[3] = {0.0};
-      for (int idx = 0; idx < frames.size(); idx++) {
+      for (size_t idx = 0; idx < frames.size(); idx++) {
         if (id_row_back_msg.count(idx) <= 0) {
           id_row_back_msg.insert(make_pair(idx, map<unsigned, vector<double>>()));
 
@@ -336,7 +336,7 @@ void Graph::Propagate() {
       for (int sample_idx = 0; sample_idx < 15; ++sample_idx) {
         double random = uni_dist(gen) * 0.01;
 
-        for (int idx = 0; idx < frames.size(); idx++) {
+        for (size_t idx = 0; idx < frames.size(); idx++) {
           const float prob = all_frame_selection_prob[frames[idx]->id_];
 
           // If accept this frame, then sum the ncc value at different depth.
@@ -395,7 +395,7 @@ void Graph::Sampling(vector<double> &all_prob) {
     sum += prob;
   }
 
-  for (int idx = 0; idx < all_prob.size(); ++idx) {
+  for (size_t idx = 0; idx < all_prob.size(); ++idx) {
     all_prob[idx] /= sum;
   }
 }

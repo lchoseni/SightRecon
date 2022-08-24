@@ -1,3 +1,4 @@
+#include <memory>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
@@ -37,15 +38,16 @@ namespace sslam {
         }
 
         std::vector<cv::KeyPoint> key_points;
+        
         switch (sslam::Config::Get<int>(sslam::Config::source_type)) {
             case 1:
                 gftt_->detect(frame->left_img_, key_points);
-                if (key_points.size() == 0) {
+                if (key_points.empty()) {
                     return false;
                 }
                 frame->SetLeftKP(key_points);
                 for (size_t i = 0; i < key_points.size(); i++) {
-                    frame->left_features_.push_back(Feature::Ptr(new Feature(frame, key_points[i])));
+                    frame->left_features_.push_back(std::make_shared<Feature>(frame, key_points[i]));
                 }
         }
         return true;

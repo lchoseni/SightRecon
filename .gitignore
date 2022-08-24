@@ -35,3 +35,19 @@
 cmake-build*
 build*
 CMakeLists.txt.user
+Simple-SLAM.code-workspace
+*.jpg
+*.png
+*.pkl
+*.pyc
+.vscode
+_pycache_
+# fast*.cpp
+fast*.py
+.cache
+.idea
+learn_fast.cpp
+query*
+tree_builder*
+node.h
+generate.cpp
