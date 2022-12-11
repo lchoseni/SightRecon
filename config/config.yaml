@@ -1,4 +1,12 @@
 %YAML:1.0
 
-dataset_dir: /home/yeren/self/
+img_dataset_dir: /home/yeren/dataset/sequences/00/
+img_gt_file: /home/yeren/dataset/poses/00.txt
 source_type: 0
+num_features: 150
+rect_size: 10
+opt_win_size: 9
+match_threshold: 80
+# feature_amount_threshold: 120
+inliners_threshold: 100
+dis_threshold: 100.0

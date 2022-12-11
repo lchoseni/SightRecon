@@ -4,8 +4,8 @@
 #include <opencv2/imgproc.hpp>
 #include <utility>
 
-#include "SSLAM/feature/extractor.h"
-#include "SSLAM/feature/orb_extractor.h"
+#include "srecon/feature/extractor.h"
+#include "srecon/feature/orb_extractor.h"
 #include "fast9.cpp"
 
 bool fast(vector<uchar> pixels) {
@@ -78,7 +78,7 @@ TEST(ORBExtractorTest, fastTest) {
 }
 
 TEST(ORBExtractorTest, extractFeature) {
-  // SSLAM::FeatureExtractor *extractor = new SSLAM::ORBExtractor(15, 35);
+  // srecon::FeatureExtractor *extractor = new srecon::ORBExtractor(15, 35);
 
   // cv::Mat img = cv::imread("/home/yeren/Simple-SLAM/test/1.png",
   // cv::IMREAD_GRAYSCALE); img.convertTo(img, CV_32S); cv::Mat img1 =

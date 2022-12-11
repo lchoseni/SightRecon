@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
-project(sslam)
+project(sightRecon)
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -21,9 +21,11 @@ find_package(Threads REQUIRED)
 
 find_package(OpenCV 3.1 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-
 find_package(fmt )
+find_package(Ceres REQUIRED)
 
+find_package(Pangolin 0.8 REQUIRED)
+include_directories(${Pangolin_INCLUDE_DIRS})
 
 find_package(Eigen3 )
 include_directories(${EIGEN3_INCLUDE_DIRS})

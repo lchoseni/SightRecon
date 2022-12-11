@@ -1,43 +1,40 @@
-#include "SSLAM/frame.h"
+#include "srecon/frame.h"
 
-namespace sslam {
-    unsigned int Frame::global_index = 0;
+#include "srecon/config.h"
 
-    Frame::Frame() : id_(GetNextIndex()) {
-    }
+namespace srecon {
+unsigned int Frame::global_index = 0;
+
+Frame::Frame() : id(GetNextIndex()) {}
 
 //    Frame::~Frame() {
 //      cout<< "invoke" << endl;
 //    }
 
-
-    unsigned int Frame::GetNextIndex() {
-        return ++global_index;
-    }
-
-    bool Frame::SetLeftKP(std::vector<cv::KeyPoint> &kps) {
-        left_key_points_ = kps;
-        return true;
-    }
-
-    void Frame::DrawKeyPoints() {
-        cv::Scalar scalar = cv::Scalar();
-
-        cv::Mat out_left, out_right;
-        cv::drawKeypoints(left_img_, left_key_points_, out_left);
-        cv::drawKeypoints(right_img_, right_key_points_, out_right);
-
-        cv::imshow("img1", out_left);
-        cv::imshow("img2", out_right);
-        cv::waitKey(0);
-    }
-
-    void Frame::SetCamera(std::shared_ptr<Camera> &sharedPtr) {
-        this->cam = sharedPtr;
-    }
-
-    std::shared_ptr<Camera> Frame::GetCamera() {
-        return cam;
-    }
-
+unsigned int Frame::GetNextIndex() {
+  global_index++;
+  return global_index - 1;
 }
+
+void Frame::SetCamera(std::shared_ptr<Camera> sharedPtr) {
+  this->cam = sharedPtr;
+}
+
+std::shared_ptr<Camera> Frame::GetCamera() { return cam; }
+
+void Frame::detectFeature(cv::Ptr<cv::GFTTDetector> &detecor,
+                          vector<cv::KeyPoint> &kps) {
+  if (features.size() < (size_t)Config::Get<int>(Config::num_features)) {
+    cv::Mat mask(img.size(), CV_8UC1, 255);
+    int rect_size = Config::Get<int>(Config::rect_size);
+    cv::Point2d rect(rect_size, rect_size);
+    for (auto &fea : features) {
+      cv::Point2d pt(fea->y, fea->x);
+      cv::rectangle(mask, pt - rect, pt + rect, 0, CV_FILLED);
+    }
+
+    detecor->detect(img, kps, mask);
+  }
+}
+
+}  // namespace srecon

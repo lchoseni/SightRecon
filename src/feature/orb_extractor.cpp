@@ -1,11 +1,11 @@
-#include "SSLAM/feature/orb_extractor.h"
+#include "srecon/feature/orb_extractor.h"
 #include <opencv2/features2d/features2d.hpp>
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 
 #include "opencv2/imgcodecs.hpp"
 
-namespace SSLAM
+namespace srecon
 {
 
     ORBExtractor::ORBExtractor(int win_size, int threshold) : win_size_(win_size), threshold_(threshold), continous_pixels_(12), adjacent_distance_(4), max_nodes_(25)

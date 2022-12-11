@@ -1,7 +1,7 @@
-#include "SSLAM/feature_track.h"
+#include "srecon/feature_track.h"
 
 
-namespace SSLAM{
+namespace srecon{
 
 
 }
