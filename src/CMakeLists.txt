@@ -1,6 +1,6 @@
 add_library(srecon SHARED
         config.cpp 
-        image_dataset.cpp ktti_dataset.cpp        fountain_dataset.cpp euroc_dataset.cpp
+        dataset/image_dataset.cpp dataset/ktti_dataset.cpp        dataset/fountain_dataset.cpp dataset/euroc_dataset.cpp
 
         feature.cpp 
         frame.cpp 

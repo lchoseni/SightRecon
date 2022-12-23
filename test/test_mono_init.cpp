@@ -6,10 +6,10 @@
 
 #include "srecon/common_include.h"
 #include "srecon/config.h"
-#include "srecon/fountain_dataset.h"
+#include "srecon/dataset/fountain_dataset.h"
 #include "srecon/frame.h"
 #include "srecon/initial/mono_initial.h"
-#include "srecon/ktti_dataset.h"
+#include "srecon/dataset/ktti_dataset.h"
 #include "srecon/mono_track.h"
 #include "srecon/optimizer.h"
 #include "srecon/viewer.h"
@@ -76,11 +76,11 @@ int main() {
         srecon::Map::Ptr localMap(new srecon::Map());
         localMap->frames.push_back(frame1);
         localMap->frames.push_back(frame2);
-        // optimizer.optimize(localMap);
+        optimizer.optimize(localMap);
         frame1 = frame2;
-        usleep(1000 * 200);
+        // usleep(1000 * 200);
         if (frame1->id % 10 == 0) {
-            // optimizer.optimize(map);
+            optimizer.optimize(map);
         }
     }
     optimizer.optimize(map);

@@ -1,7 +1,4 @@
-//
-// Created by yeren on 1/24/22.
-//
-#include "srecon/ktti_dataset.h"
+#include "srecon/dataset/ktti_dataset.h"
 
 #include <boost/format.hpp>
 #include <iostream>

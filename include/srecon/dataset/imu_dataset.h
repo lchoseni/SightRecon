@@ -1,7 +1,7 @@
 #ifndef IMU_DATASET
 #define IMU_DATASET
 
-#include "common_include.h"
+#include "../common_include.h"
 #include "dataset.h"
 
 namespace srecon {

@@ -3,7 +3,7 @@
 
 #include "../camera.h"
 #include "../common_include.h"
-#include "../image_dataset.h"
+#include "../dataset/image_dataset.h"
 #include "../frame.h"
 
 namespace srecon {

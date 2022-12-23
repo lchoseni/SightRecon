@@ -1,13 +1,9 @@
-//
-// Created by yeren on 1/24/22.
-//
-
 #ifndef IMAGE_DATASET_H
 #define IMAGE_DATASET_H
 
-#include "camera.h"
-#include "common_include.h"
-#include "frame.h"
+#include "../camera.h"
+#include "../common_include.h"
+#include "../frame.h"
 #include "dataset.h"
 
 namespace srecon {

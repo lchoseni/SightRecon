@@ -2,7 +2,7 @@
 #define MONO_TRACK_H
 
 #include "common_include.h"
-#include "image_dataset.h"
+#include "dataset/image_dataset.h"
 #include "initial/initial.h"
 #include "map.h"
 #include "map_point.h"

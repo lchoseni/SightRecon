@@ -1,15 +1,26 @@
-#include "srecon/euroc_dataset.h"
-
+#include "srecon/dataset/euroc_dataset.h"
 #include <boost/format.hpp>
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/eigen.hpp>
+#include "unistd.h"
 
 #include "srecon/camera.h"
 #include "srecon/config.h"
-#include "unistd.h"
 
 namespace srecon {
+
+EurocDataset::EurocDataset() {
+    this->imu_dataset_dir = Config::Get<std::string>(Config::imu_dataset_dir);
+    this->image_dataset_dir = Config::Get<std::string>(Config::img_dataset_dir);
+    ;
+    if (!readGroundTruth()) {
+        cerr << "Read ground truth failed!" << endl;
+    }
+    if (!setCameras()) {
+        cerr << "Read camera parameters failed!" << endl;
+    }
+}
 
 bool EurocDataset::setCameras() {
     std::string camera_file = Config::Get<std::string>(Config::img_dataset_dir) + "/sensor.yaml";
@@ -34,21 +45,10 @@ bool EurocDataset::setCameras() {
     return true;
 }
 
-EurocDataset::EurocDataset() {
-    this->imu_dataset_dir = Config::Get<std::string>(Config::imu_dataset_dir);
-    this->image_dataset_dir = Config::Get<std::string>(Config::img_dataset_dir);
-    ;
-    if (!readGroundTruth()) {
-        cerr << "Read ground truth failed!" << endl;
-    }
-    if (!setCameras()) {
-        cerr << "Read camera parameters failed!" << endl;
-    }
-}
-
 bool EurocDataset::readGroundTruth() {
     return readImageNames() && readIMUData() && readGt();
 }
+
 
 bool EurocDataset::readGt() {
     std::string img_gt_file = Config::Get<std::string>(Config::img_gt_file);
@@ -200,4 +200,13 @@ Frame::Ptr EurocDataset::GetNextFrame() {
     return shared_ptr<Frame>(new_frame);
 }
 
+bool EurocDataset::publishData() {
+    // if(imu_datas.empty() || image_names.empty()){
+    //     cerr << 
+    // }
+    // if(time == -1){
+    //     time = 
+    // }    
+    return true;
+}
 }  // namespace srecon

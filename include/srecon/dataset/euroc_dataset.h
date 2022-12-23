@@ -1,8 +1,9 @@
 #ifndef EUROC_DATASET
 #define EUROC_DATASET
 
-#include "camera.h"
-#include "frame.h"
+
+#include "../camera.h"
+#include "../frame.h"
 #include "image_dataset.h"
 #include "imu_dataset.h"
 
@@ -34,12 +35,11 @@ class EurocDataset : public ImageDataset, public IMUDataset {
 
     EurocDataset();
     Frame::Ptr GetNextFrame();
-
     bool setCameras();
     IMUData getIMUData();
-
     Camera::Ptr GetCamera(int id);
     bool readGroundTruth();
+    bool publishData();
 };
 
 }  // namespace srecon

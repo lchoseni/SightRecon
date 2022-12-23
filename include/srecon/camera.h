@@ -1,7 +1,3 @@
-//
-// Created by yeren on 1/24/22.
-//
-
 #ifndef SRECON_CAMERA_H
 #define SRECON_CAMERA_H
 

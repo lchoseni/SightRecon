@@ -1,7 +1,4 @@
-//
-// Created by yeren on 1/24/22.
-//
-#include "srecon/fountain_dataset.h"
+#include "srecon/dataset/fountain_dataset.h"
 
 #include <dirent.h>
 #include <sys/types.h>
