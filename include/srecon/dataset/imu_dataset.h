@@ -11,14 +11,16 @@ typedef struct IMUData {
     double gyro[3];
     double a[3];
     unsigned int time;
+    typedef std::shared_ptr<IMUData> Ptr;
 } IMUData;
 
-class IMUDataset :virtual public Dataset{
-  protected:
+class IMUDataset : virtual public Dataset {
+   protected:
     unsigned int imu_idx;
 
    public:
-    virtual IMUData getIMUData() = 0;
+    typedef std::shared_ptr<IMUDataset> Ptr;
+    virtual IMUData::Ptr getIMUData() = 0;
 };
 
 }  // namespace srecon

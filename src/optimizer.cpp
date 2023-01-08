@@ -125,7 +125,7 @@ bool Optimizer::optimize(Map::Ptr map) {
   // options.minimizer_progress_to_stdout = true;
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);
-  std::cout << summary.BriefReport() << "\n";
+  DLOG(INFO) << summary.BriefReport() << "\n";
   // if (summary.termination_type == ceres::CONVERGENCE ||
   //     summary.final_cost < 5e-02) {
     for (auto& frame : f_set) {

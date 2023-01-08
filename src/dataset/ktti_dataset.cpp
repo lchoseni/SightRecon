@@ -52,13 +52,10 @@ bool KttiDataset::readGroundTruth() {
 shared_ptr<Frame> KttiDataset::GetNextFrame() {
     boost::format data_fmt("%s/image_0/%06d.png");
     cv::Mat left, right;
-    cout << (data_fmt % dataset_dir % img_index).str().c_str() << endl;
+    LOG(INFO) << (data_fmt % dataset_dir % img_index).str().c_str() << endl;
     if (access((data_fmt % dataset_dir % img_index).str().c_str(), F_OK) == -1) {
         return NULL;
     }
-    // if (img_index > 10) {
-    //   return NULL;
-    // }
 
     left = cv::imread((data_fmt % dataset_dir % img_index).str(),
                       cv::IMREAD_GRAYSCALE);

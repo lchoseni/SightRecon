@@ -80,18 +80,16 @@ bool MonoInitial::computeRT(Frame::Ptr &frame1, Frame::Ptr &frame2,
 
   cv::Mat E = cv::findEssentialMat(fkps1_2d, fkps2_2d, K, cv::RANSAC, 0.999,
                                    1.0, inlinerMask);
-  cout << "Essential is\n" << E << endl;
-#ifdef DEBUG
+  LOG(INFO) << "Essential is\n" << E << endl;
   int nPointsFindEssentialMat = countNonZero(inlinerMask);
-  cout << "findEssentialMat: \n\t" << nPointsFindEssentialMat
+  DLOG(INFO) << "findEssentialMat: \n\t" << nPointsFindEssentialMat
        << " valid points, "
        << (float)nPointsFindEssentialMat * 100 / fkps1_2d.size() << "% of "
        << fkps1_2d.size() << " points are used" << endl;
-#endif
   int inliners =
       cv::recoverPose(E, fkps1_2d, fkps2_2d, K, cv_R, cv_T,
                       Config::Get<int>(Config::dis_threshold));
-  cout << "Find " << inliners << " inliners." << endl;
+  LOG(INFO) << "Find " << inliners << " inliners." << endl;
   if (inliners < Config::Get<int>(Config::inliners_threshold)) {
     return false;
   }
@@ -131,7 +129,7 @@ int MonoInitial::init(Frame::Ptr &result_frame1, Frame::Ptr &result_frame2,
     cv::setIdentity(R1);
 
     triangulatePts(R1, T1, cv_R, cv_T, K, fkps1_2d, fkps2_2d, pts_3d);
-    cout << "R is\n" << cv_R << "\nT is\n" << cv_T << endl;
+    LOG(INFO) << "R is\n" << cv_R << "\nT is\n" << cv_T << endl;
     // Add mappoint and features.
     vector<double> depths;
     for (int i = 0; i < pts_3d.cols; i++) {

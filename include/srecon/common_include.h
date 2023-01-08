@@ -6,6 +6,7 @@
 #include<vector>
 #include<memory>
 #include <map>
+#include <glog/logging.h>
 
 // Sophus
 #include<sophus/se3.hpp>

@@ -72,7 +72,7 @@ bool MonoTrack::track(Frame::Ptr &frame1, Frame::Ptr &frame2) {
     }
   }
 
-  cout << "\tFind " << num_good_pts << " good points!" << endl;
+  LOG(INFO) << "\tFind " << num_good_pts << " good points!" << endl;
 
   if (num_good_pts < Config::Get<int>(Config::match_threshold)) {
     return false;

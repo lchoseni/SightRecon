@@ -19,6 +19,9 @@ add_library(srecon SHARED
         mono_sys.cpp
         viewer.cpp
         imu/imu.cpp
+        processor/image_processor.cpp
+        data_publish.cpp
         )
 
-target_link_libraries(srecon ${THIRD_PARTY_LIBS} pango_display pango_python)
+# target_link_libraries(srecon ${THIRD_PARTY_LIBS} pango_display pango_python)
+target_link_libraries(srecon ${THIRD_PARTY_LIBS} )

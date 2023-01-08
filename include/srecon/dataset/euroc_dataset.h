@@ -24,7 +24,7 @@ class EurocDataset : public ImageDataset, public IMUDataset {
     std::string imu_dataset_dir;
     std::string image_dataset_dir;
     vector<std::string> image_names;
-    vector<IMUData> imu_datas;
+    vector<IMUData::Ptr> imu_datas;
     vector<ImgImuData> img_imu_gt;
     bool readImageNames();
     bool readGt();
@@ -36,10 +36,9 @@ class EurocDataset : public ImageDataset, public IMUDataset {
     EurocDataset();
     Frame::Ptr GetNextFrame();
     bool setCameras();
-    IMUData getIMUData();
+    IMUData::Ptr getIMUData();
     Camera::Ptr GetCamera(int id);
     bool readGroundTruth();
-    bool publishData();
 };
 
 }  // namespace srecon

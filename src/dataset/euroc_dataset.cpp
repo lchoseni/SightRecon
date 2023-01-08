@@ -24,7 +24,7 @@ EurocDataset::EurocDataset() {
 
 bool EurocDataset::setCameras() {
     std::string camera_file = Config::Get<std::string>(Config::img_dataset_dir) + "/sensor.yaml";
-    cout << "Sensor file " << camera_file << endl;
+    LOG(INFO) << "Sensor file " << camera_file << endl;
     if (access(camera_file.c_str(), F_OK) == -1) {
         cerr << "Can not access " << camera_file << endl;
         return false;
@@ -150,14 +150,14 @@ bool EurocDataset::readIMUData() {
             start_pos = line.find(',', start_pos) + 1;
         }
         // data[5] = stod(line.substr(line.find(',', i) + 1, line.find(',', i + 1)));
-        IMUData imu_data;
-        imu_data.time = time;
-        imu_data.gyro[0] = data[0];
-        imu_data.gyro[1] = data[1];
-        imu_data.gyro[2] = data[2];
-        imu_data.a[0] = data[3];
-        imu_data.a[1] = data[4];
-        imu_data.a[2] = data[5];
+        IMUData::Ptr imu_data(new IMUData());
+        imu_data->time = time;
+        imu_data->gyro[0] = data[0];
+        imu_data->gyro[1] = data[1];
+        imu_data->gyro[2] = data[2];
+        imu_data->a[0] = data[3];
+        imu_data->a[1] = data[4];
+        imu_data->a[2] = data[5];
         imu_datas.push_back(imu_data);
     }
     fin.close();
@@ -166,7 +166,7 @@ bool EurocDataset::readIMUData() {
 
 Camera::Ptr EurocDataset::GetCamera(int id) { return cameras[id]; }
 
-IMUData EurocDataset::getIMUData() {
+IMUData::Ptr EurocDataset::getIMUData() {
     
     return imu_datas[imu_idx++];
 }
@@ -175,7 +175,7 @@ Frame::Ptr EurocDataset::GetNextFrame() {
     boost::format data_fmt("%s/data/%s");
     std::string image_file_name = image_names[img_index];
     cv::Mat img_mat;
-    cout << (data_fmt % dataset_dir % image_file_name).str().c_str() << endl;
+    LOG(INFO) << (data_fmt % dataset_dir % image_file_name).str().c_str() << endl;
     if (access((data_fmt % dataset_dir % image_file_name).str().c_str(), F_OK) == -1) {
         return NULL;
     }
@@ -200,13 +200,4 @@ Frame::Ptr EurocDataset::GetNextFrame() {
     return shared_ptr<Frame>(new_frame);
 }
 
-bool EurocDataset::publishData() {
-    // if(imu_datas.empty() || image_names.empty()){
-    //     cerr << 
-    // }
-    // if(time == -1){
-    //     time = 
-    // }    
-    return true;
-}
 }  // namespace srecon

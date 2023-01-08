@@ -9,18 +9,19 @@
 
 namespace srecon {
 class MonoTrack {
- public:
-  Initial *initializer;
-  ImageDataset::Ptr dataset;
-  Map::Ptr map;
-  cv::Ptr<cv::GFTTDetector> detecor;
+   public:
+    typedef std::shared_ptr<MonoTrack> Ptr;
+    Initial *initializer;
+    ImageDataset::Ptr dataset;
+    Map::Ptr map;
+    cv::Ptr<cv::GFTTDetector> detecor;
 
-  MonoTrack(Initial *init, ImageDataset::Ptr dataset, Map::Ptr &map, 
-            cv::Ptr<cv::GFTTDetector> detecor);
+    MonoTrack(Initial *init, ImageDataset::Ptr dataset, Map::Ptr &map,
+              cv::Ptr<cv::GFTTDetector> detecor);
 
-  bool track(Frame::Ptr &frame1, Frame::Ptr &frame2);
+    bool track(Frame::Ptr &frame1, Frame::Ptr &frame2);
 
-  bool remove3dInliners(vector<MapPoint::Ptr> map_points, cv::Mat inliners);
+    bool remove3dInliners(vector<MapPoint::Ptr> map_points, cv::Mat inliners);
 };
 }  // namespace srecon
 #endif

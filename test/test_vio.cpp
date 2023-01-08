@@ -3,7 +3,8 @@
 #include "srecon/config.h"
 #include "srecon/dataset/euroc_dataset.h"
 
-int main() {
+int main(int argc, char* argv[]) {
+
     std::string config_file = "/home/yeren/OneDrive/C C++ Projects/Simple-SLAM/config/euroc_config.yaml";
 
     srecon::Config::SetConfigFile(config_file);
@@ -12,8 +13,7 @@ int main() {
     std::thread render(&srecon::EurocDataset::GetNextFrame, *dataset);
     std::thread render(&srecon::EurocDataset::getIMUData, *dataset);
 
-
     render.detach();
-    
-        return 0;
+
+    return 0;
 }

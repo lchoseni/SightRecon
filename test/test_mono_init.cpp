@@ -43,7 +43,7 @@ int main() {
     double scale;
     srecon::Frame::Ptr frame1, frame2;
     if (initial.init(frame1, frame2, scale) < 0) {
-        std::cout << "Initialization failed!" << endl;
+        LOG(ERROR) << "Initialization failed!" << endl;
         return 0;
     }
     {
@@ -54,7 +54,7 @@ int main() {
         localMap->frames.push_back(frame2);
     }
 
-    cout << "R after initialization is\n"
+    LOG(INFO) << "R after initialization is\n"
          << frame2->R << endl
          << "T after initialization is\n"
          << frame2->T << endl;
@@ -65,10 +65,10 @@ int main() {
     while (frame2 = dataset->GetNextFrame()) {
         if (!mtrack.track(frame1, frame2)) {
             pangolin::QuitAll();
-            std::cout << "track failed!" << std::endl;
+            LOG(ERROR) << "track failed!" << std::endl;
             return -1;
         }
-        cout << "R after track is\n"
+        LOG(INFO) << "R after track is\n"
              << frame2->R << endl
              << "T after track is\n"
              << frame2->T << endl;

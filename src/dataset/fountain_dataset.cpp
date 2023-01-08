@@ -27,7 +27,7 @@ bool FountainDataset::readGroundTruth() {
   Eigen::Vector3d init_T;
   while (1) {
     boost::format data_fmt("%s/%04d.png.camera");
-    cout << " ground truth " << (data_fmt % gt_file % count).str().c_str()
+    LOG(INFO) << " ground truth " << (data_fmt % gt_file % count).str().c_str()
          << endl;
     if (access((data_fmt % gt_file % count).str().c_str(), F_OK) == -1) {
       cerr << "Can not find ground truth " << (data_fmt % gt_file % count).str()
@@ -83,7 +83,7 @@ bool FountainDataset::readGroundTruth() {
 shared_ptr<Frame> FountainDataset::GetNextFrame() {
   boost::format data_fmt("%s/%04d.png");
   cv::Mat left;
-  cout << (data_fmt % dataset_dir % img_index).str().c_str() << endl;
+  LOG(INFO) << (data_fmt % dataset_dir % img_index).str().c_str() << endl;
   if (access((data_fmt % dataset_dir % img_index).str().c_str(), F_OK) == -1) {
     return NULL;
   }

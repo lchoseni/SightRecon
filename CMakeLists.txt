@@ -13,9 +13,9 @@ link_directories("/usr/local/Cellar/fmt/8.1.1_1/lib")
 ################################
 # GTest
 ################################
-find_package(GTest REQUIRED)
-enable_testing()
-include_directories(${GTEST_INCLUDE_DIRS})
+# find_package(GTest REQUIRED)
+# enable_testing()
+# include_directories(${GTEST_INCLUDE_DIRS})
 # glog
 find_package(Glog REQUIRED)
 include_directories(${GLOG_INCLUDE_DIRS})
@@ -31,8 +31,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(fmt )
 find_package(Ceres REQUIRED)
 
-find_package(Pangolin 0.8 REQUIRED)
-include_directories(${Pangolin_INCLUDE_DIRS})
+# find_package(Pangolin 0.8 REQUIRED)
+# include_directories(${Pangolin_INCLUDE_DIRS})
 
 find_package(Eigen3 )
 include_directories(${EIGEN3_INCLUDE_DIRS})
