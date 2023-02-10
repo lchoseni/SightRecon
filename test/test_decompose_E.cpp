@@ -1,18 +1,18 @@
-#include "SSLAM/graph.h"
-#include "SSLAM/dataset.h"
-#include "SSLAM/front_end.h"
-#include "SSLAM/config.h"
-#include "SSLAM/frame.h"
+// #include "srecon/graph.h"
+// #include "srecon/dataset.h"
+// #include "srecon/front_end.h"
+// #include "srecon/config.h"
+// #include "srecon/frame.h"
 
 
-int main(){
-    sslam::Config::SetConfigFile(sslam::Config::config_file_);
-    sslam::FrontEnd front_end;
+// int main(){
+//     srecon::Config::SetConfigFile(srecon::Config::config_file_);
+//     srecon::FrontEnd front_end;
 
-    sslam::Dataset dataset;
-    sslam::Graph graph = sslam::Graph(&dataset, dataset.GetNextFrame());
-    graph.ComputeAllRAndT();
-  cv::waitKey(0);
+//     srecon::Dataset dataset;
+//     srecon::Graph graph = srecon::Graph(&dataset, dataset.GetNextFrame());
+//     graph.ComputeAllRAndT();
+//   cv::waitKey(0);
 
 
-}
+// }

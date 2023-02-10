@@ -1,6 +1,6 @@
-#include "SSLAM/hmm.h"
+#include "srecon/hmm.h"
 
-namespace sslam {
+namespace srecon {
 
 
 Hmm::Hmm(Eigen::Matrix<double, 2, 2> transition_prob) : transition_prob_(transition_prob) {
